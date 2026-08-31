@@ -65,7 +65,11 @@ class CalendarManager: ObservableObject {
         setupEventStoreChangedObserver()
         startLockScreenRefreshLoop()
         Task {
-            await reloadCalendarAndReminderLists()
+            // Kick off authorization + the first events/reminders fetch at launch.
+            // Without this the calendar list loads but events are never queried,
+            // so the notch shows "No events today" even when events exist.
+            await checkCalendarAuthorization()
+            await checkReminderAuthorization()
         }
     }
 

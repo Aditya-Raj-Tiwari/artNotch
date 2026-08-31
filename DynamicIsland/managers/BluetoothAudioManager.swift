@@ -331,6 +331,14 @@ class BluetoothAudioManager: ObservableObject {
         if let lastDevice = connectedDevices.last {
             lastConnectedDevice = lastDevice
             print("🎧 [BluetoothAudioManager] ✅ Bluetooth audio connected: \(lastDevice.name)")
+
+            // Show the battery HUD for a device that was already connected when the
+            // app launched — otherwise it only ever appears on a fresh connect,
+            // so headphones connected before launch never show their battery.
+            // Delay slightly so the notch window is up and battery has populated.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+                self?.showDeviceConnectedHUD(lastDevice)
+            }
         }
     }
     
