@@ -460,7 +460,10 @@ struct MusicControlsView: View {
     }
 
     private var musicSlider: some View {
-        TimelineView(.animation(paused: isProgressTimelinePaused)) { timeline in
+        // ~8Hz instead of per-display-frame: a progress bar doesn't need 60/120fps
+        // smoothness, and per-frame ticks were a big share of the music-playing
+        // cost. `minimumInterval` keeps the existing `paused:` gating intact.
+        TimelineView(.animation(minimumInterval: 1.0 / 8.0, paused: isProgressTimelinePaused)) { timeline in
             MusicSliderView(
                 sliderValue: $sliderValue,
                 duration: $musicManager.songDuration,

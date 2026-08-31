@@ -103,7 +103,11 @@ class AudioSpectrum: NSView {
             animation.fillMode = .forwards
             animation.isRemovedOnCompletion = false
             if #available(macOS 13.0, *) {
-                animation.preferredFrameRateRange = CAFrameRateRange(minimum: 24, maximum: 24, preferred: 24)
+                // A simulated spectrum reads fine at ~15fps; 24fps roughly doubled
+                // the render-server cost of these continuous CoreAnimations while
+                // music played. (Already stops entirely when the view leaves its
+                // window -- see viewDidMoveToWindow.)
+                animation.preferredFrameRateRange = CAFrameRateRange(minimum: 12, maximum: 15, preferred: 15)
             }
             barLayer.add(animation, forKey: "scaleY")
         }

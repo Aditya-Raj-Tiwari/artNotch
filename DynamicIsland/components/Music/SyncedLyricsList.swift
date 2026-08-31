@@ -115,26 +115,26 @@ struct SyncedLyricsList: View {
                         .padding(.vertical, 8)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 } else {
-                    // Redraw on every frame while playing so the highlight
-                    // tracks the music instead of stepping line by line.
-                    TimelineView(.animation(paused: !musicManager.isPlaying)) { timeline in
-                        let current = musicManager.currentLyricIndex
-                        let progress = musicManager.currentLyricSweepProgress(at: timeline.date)
+                    // Only the current line sweeps -- non-current rows render
+                    // statically and ignore `progress` entirely (see lyricRow).
+                    // So drive just the current row from a per-frame TimelineView
+                    // instead of rebuilding the whole LazyVStack every frame; the
+                    // list re-lays-out only when the current line changes.
+                    let current = musicManager.currentLyricIndex
 
-                        LazyVStack(alignment: .leading, spacing: style.lineSpacing) {
-                            ForEach(lyrics) { row in
-                                // Padding inside the width claim, not outside
-                                // it: the other order made each row the full
-                                // column wide *plus* its own insets, so long
-                                // lines ran off the panel instead of wrapping.
-                                lyricRow(row, isCurrent: row.index == current, progress: progress)
-                                    .padding(.horizontal, style.horizontalPadding)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .id(row.index)
-                            }
+                    LazyVStack(alignment: .leading, spacing: style.lineSpacing) {
+                        ForEach(lyrics) { row in
+                            // Padding inside the width claim, not outside
+                            // it: the other order made each row the full
+                            // column wide *plus* its own insets, so long
+                            // lines ran off the panel instead of wrapping.
+                            lyricRow(row, isCurrent: row.index == current)
+                                .padding(.horizontal, style.horizontalPadding)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .id(row.index)
                         }
-                        .padding(.vertical, style.verticalPadding)
                     }
+                    .padding(.vertical, style.verticalPadding)
                 }
             }
             .scrollIndicators(.never)
@@ -201,7 +201,22 @@ struct SyncedLyricsList: View {
     }
 
     @ViewBuilder
-    private func lyricRow(_ row: LyricRow, isCurrent: Bool, progress: Double) -> some View {
+    private func lyricRow(_ row: LyricRow, isCurrent: Bool) -> some View {
+        if isCurrent {
+            // Per-frame sweep confined to the single current line, so the rest
+            // of the list is not redrawn every frame.
+            TimelineView(.animation(paused: !musicManager.isPlaying)) { timeline in
+                lyricRowContent(row, isCurrent: true, progress: musicManager.currentLyricSweepProgress(at: timeline.date))
+            }
+        } else {
+            // Non-current rows are static: their appearance does not depend on
+            // `progress` (see LyricSweepModifier / SweptLyricText).
+            lyricRowContent(row, isCurrent: false, progress: 0)
+        }
+    }
+
+    @ViewBuilder
+    private func lyricRowContent(_ row: LyricRow, isCurrent: Bool, progress: Double) -> some View {
         let size = isCurrent ? (style.currentFontSize ?? style.fontSize) : style.fontSize
 
         switch row {

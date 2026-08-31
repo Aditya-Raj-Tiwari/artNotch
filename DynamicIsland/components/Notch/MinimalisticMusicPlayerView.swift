@@ -771,8 +771,11 @@ private struct MinimalisticReminderDetailsView: View {
     }
 
     private var progressBar: some View {
+        // ~8Hz instead of per-display-frame; `minimumInterval` preserves the
+        // `paused:` gating. A progress bar needs no per-frame smoothness.
         TimelineView(
             .animation(
+                minimumInterval: 1.0 / 8.0,
                 paused: isProgressTimelinePaused
             )
         ) { timeline in
