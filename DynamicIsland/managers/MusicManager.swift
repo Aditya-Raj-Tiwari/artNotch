@@ -521,10 +521,6 @@ class MusicManager: ObservableObject {
     // Active controller
     private var activeController: (any MediaControllerProtocol)?
 
-    // Pear Desktop auto-detection
-    private static let pearDesktopBundleID = YouTubeMusicConfiguration.default.bundleIdentifier
-    private var isPearDesktopAutoSwitched: Bool = false
-
     // Published properties for UI
     @Published var songTitle: String = "I'm Handsome"
     @Published var artistName: String = "Me"
@@ -650,7 +646,6 @@ class MusicManager: ObservableObject {
         // Listen for changes to the default controller preference
         NotificationCenter.default.publisher(for: Notification.Name.mediaControllerChanged)
             .sink { [weak self] _ in
-                self?.isPearDesktopAutoSwitched = false
                 self?.setActiveControllerBasedOnPreference()
             }
             .store(in: &cancellables)
@@ -662,9 +657,6 @@ class MusicManager: ObservableObject {
             }
             .store(in: &cancellables)
 
-        // Observe Pear Desktop launch/terminate for auto-detection
-        setupPearDesktopAutoDetection()
-
         // Initialize deprecation check asynchronously
         Task { @MainActor in
             do {
@@ -674,54 +666,10 @@ class MusicManager: ObservableObject {
                 print("Failed to check deprecation status: \(error). Defaulting to false.")
                 self.isNowPlayingDeprecated = false
             }
-            
-            // Check if Pear Desktop is already running at startup
-            let pearDesktopRunning = NSWorkspace.shared.runningApplications.contains {
-                $0.bundleIdentifier == Self.pearDesktopBundleID
-            }
-            
-            if pearDesktopRunning {
-                print("[MusicManager] Pear Desktop detected at startup, auto-switching to YouTubeMusicController")
-                self.isPearDesktopAutoSwitched = true
-                if let controller = self.createController(for: .youtubeMusic) {
-                    self.setActiveController(controller)
-                }
-            } else {
-                // Initialize the active controller after deprecation check
-                self.setActiveControllerBasedOnPreference()
-            }
+
+            // Initialize the active controller after deprecation check
+            self.setActiveControllerBasedOnPreference()
         }
-    }
-
-    // MARK: - Pear Desktop Auto-Detection
-    private func setupPearDesktopAutoDetection() {
-        NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didLaunchApplicationNotification)
-            .sink { [weak self] notification in
-                guard let self = self,
-                      let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
-                      app.bundleIdentifier == Self.pearDesktopBundleID else { return }
-
-                print("[MusicManager] Pear Desktop launched, auto-switching to YouTubeMusicController")
-                self.isPearDesktopAutoSwitched = true
-                if let controller = self.createController(for: .youtubeMusic) {
-                    self.setActiveController(controller)
-                }
-            }
-            .store(in: &cancellables)
-
-        NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didTerminateApplicationNotification)
-            .sink { [weak self] notification in
-                guard let self = self,
-                      let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
-                      app.bundleIdentifier == Self.pearDesktopBundleID else { return }
-
-                print("[MusicManager] Pear Desktop terminated, reverting to preferred controller")
-                if self.isPearDesktopAutoSwitched {
-                    self.isPearDesktopAutoSwitched = false
-                    self.setActiveControllerBasedOnPreference()
-                }
-            }
-            .store(in: &cancellables)
     }
 
     deinit {
@@ -802,10 +750,10 @@ class MusicManager: ObservableObject {
 
         if let controller = createController(for: controllerType) {
             setActiveController(controller)
-        } else if controllerType != .appleMusic, let fallbackController = createController(for: .appleMusic) {
-            // Fallback to Apple Music if preferred controller couldn't be created
-            setActiveController(fallbackController)
         }
+        // Never fall back to .appleMusic: the AppleScript controller silently
+        // swallows TCC denials. If the preferred controller can't be created,
+        // leave activeController nil.
     }
 
     private func setActiveController(_ controller: any MediaControllerProtocol) {
@@ -927,8 +875,6 @@ class MusicManager: ObservableObject {
             self.prepareLyricsForCurrentTrack()
             if let liveArtworkURL = state.liveArtworkURL {
                 self.videoArtworkURL = liveArtworkURL
-            } else {
-                self.fetchVideoArtwork()
             }
 
             self.refreshExplicitFlag(for: state)
@@ -1983,32 +1929,6 @@ class MusicManager: ObservableObject {
     private func stopLyricSync() {
         lyricSyncTask?.cancel()
         lyricSyncTask = nil
-    }
-
-    // MARK: - Video Artwork
-
-    func fetchVideoArtwork() {
-        guard Defaults[.lockScreenMusicFullscreenVideoArtwork] else {
-            videoArtworkURL = nil
-            return
-        }
-        // Se il player non è Apple Music, non toccare videoArtworkURL:
-        // SpotifyController gestisce il canvas in modo autonomo tramite liveArtworkURL.
-        guard bundleIdentifier == "com.apple.Music" else {
-            return
-        }
-
-        let title = songTitle
-        let artist = artistName
-
-        Task {
-            let url = await AnimatedArtworkManager.shared.fetchAnimatedArtworkURL(
-                title: title, artist: artist
-            )
-            await MainActor.run {
-                self.videoArtworkURL = url
-            }
-        }
     }
 
     func toggleLyrics() {

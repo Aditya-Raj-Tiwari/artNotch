@@ -11,28 +11,27 @@ CI_WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
 
 
 class PrivacyConfigurationTests(unittest.TestCase):
-    def test_camera_capture_is_explicitly_entitled(self):
+    def test_camera_capture_is_not_entitled(self):
         entitlements = plistlib.loads(ENTITLEMENTS.read_bytes())
 
-        self.assertTrue(entitlements.get("com.apple.security.device.camera"))
+        self.assertIsNone(entitlements.get("com.apple.security.device.camera"))
 
-    def test_notes_sync_is_authorized_for_apple_events(self):
+    def test_media_control_is_authorized_for_apple_events(self):
         project = PROJECT.read_text()
         entitlements = plistlib.loads(ENTITLEMENTS.read_bytes())
 
+        apple_events = entitlements["com.apple.security.temporary-exception.apple-events"]
         self.assertNotIn("AUTOMATION_APPLE_EVENTS = NO;", project)
-        self.assertIn(
-            "com.apple.Notes",
-            entitlements["com.apple.security.temporary-exception.apple-events"],
-        )
+        self.assertIn("com.apple.Music", apple_events)
+        self.assertNotIn("com.apple.Notes", apple_events)
 
-    def test_automation_usage_text_names_notes(self):
+    def test_automation_usage_text_names_media_apps(self):
         project = PROJECT.read_text()
 
         self.assertEqual(
             2,
             project.count(
-                'INFOPLIST_KEY_NSAppleEventsUsageDescription = "Atoll uses AppleScripts to control Spotify, Apple Music, and Notes.";'
+                'INFOPLIST_KEY_NSAppleEventsUsageDescription = "Atoll uses AppleScripts to control Spotify and Apple Music.";'
             ),
         )
 

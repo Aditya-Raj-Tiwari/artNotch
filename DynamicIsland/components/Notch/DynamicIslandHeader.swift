@@ -21,17 +21,13 @@ import SwiftUI
 
 struct DynamicIslandHeader: View {
     @EnvironmentObject var vm: DynamicIslandViewModel
-    @EnvironmentObject var webcamManager: WebcamManager
     @ObservedObject var batteryModel = BatteryStatusViewModel.shared
     @ObservedObject var coordinator = DynamicIslandViewCoordinator.shared
-    @ObservedObject var shelfState = ShelfStateViewModel.shared
     @ObservedObject var timerManager = TimerManager.shared
     @ObservedObject var doNotDisturbManager = DoNotDisturbManager.shared
-    @State private var showColorPickerPopover = false
     @State private var showTimerPopover = false
     @Default(.enableTimerFeature) var enableTimerFeature
     @Default(.timerDisplayMode) var timerDisplayMode
-    @Default(.showColorPickerIcon) var showColorPickerIcon
     @Default(.showBatteryIndicator) var showBatteryIndicator
     @Default(.showBatteryPercentInside) var showBatteryPercentInside
     @Default(.showMinimalisticBatteryIndicator) var showMinimalisticBatteryIndicator
@@ -45,7 +41,6 @@ struct DynamicIslandHeader: View {
     /// 16pt of ink height, which is what actually makes a mixed row look even.
     private static let headerGlyphSizes: [String: CGFloat] = [
         "web.camera": 14.5,
-        "eyedropper": 14.3,
         "timer": 14.4,
         "gearshape": 14.2
     ]
@@ -65,7 +60,7 @@ struct DynamicIslandHeader: View {
         HStack(spacing: 0) {
             HStack {
                 if !enableMinimalisticUI {
-                    let shouldShowTabs = coordinator.alwaysShowTabs || vm.notchState == .open || !shelfState.items.isEmpty
+                    let shouldShowTabs = coordinator.alwaysShowTabs || vm.notchState == .open
                     if shouldShowTabs {
                         TabSelectionView()
                     }
@@ -94,53 +89,6 @@ struct DynamicIslandHeader: View {
             // of this size.
             HStack(spacing: 8) {
                 if vm.notchState == .open && !enableMinimalisticUI {
-                    if Defaults[.showMirror] {
-                        Button(action: {
-                            vm.toggleCameraPreview()
-                        }) {
-                            Capsule()
-                                .fill(.black)
-                                .frame(width: 30, height: 30)
-                                .overlay {
-                                    headerGlyph("web.camera")
-                                }
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                    }
-                    
-                    // ColorPicker button
-                    if Defaults[.enableColorPickerFeature] && showColorPickerIcon{
-                        Button(action: {
-                            switch Defaults[.colorPickerDisplayMode] {
-                            case .panel:
-                                ColorPickerPanelManager.shared.toggleColorPickerPanel()
-                            case .popover:
-                                showColorPickerPopover.toggle()
-                            }
-                        }) {
-                            Capsule()
-                                .fill(.black)
-                                .frame(width: 30, height: 30)
-                                .overlay {
-                                    headerGlyph("eyedropper")
-                                }
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .popover(isPresented: $showColorPickerPopover, arrowEdge: .bottom) {
-                            ColorPickerPopover()
-                        }
-                        .onChange(of: showColorPickerPopover) { isActive in
-                            vm.isColorPickerPopoverActive = isActive
-                            
-                            // If popover was closed, trigger a hover recheck
-                            if !isActive {
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                    vm.shouldRecheckHover.toggle()
-                                }
-                            }
-                        }
-                    }
-                    
                     if Defaults[.enableTimerFeature] && timerDisplayMode == .popover {
                         Button(action: {
                             withAnimation(.smooth) {
@@ -257,7 +205,6 @@ struct DynamicIslandHeader: View {
 private extension DynamicIslandHeader {
     var shouldSuppressStatusIndicators: Bool {
         Defaults[.settingsIconInNotch]
-            && Defaults[.showColorPickerIcon]
             && Defaults[.enableTimerFeature]
     }
 }
@@ -265,5 +212,4 @@ private extension DynamicIslandHeader {
 #Preview {
     DynamicIslandHeader()
         .environmentObject(DynamicIslandViewModel())
-        .environmentObject(WebcamManager.shared)
 }

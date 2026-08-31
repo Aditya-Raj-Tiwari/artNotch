@@ -12,7 +12,6 @@ import EventKit
 import KeyboardShortcuts
 import LaunchAtLogin
 import LottieUI
-import Sparkle
 import SwiftUI
 import SwiftUIIntrospect
 import UniformTypeIdentifiers
@@ -23,9 +22,6 @@ private enum SettingsTabGroup: String, CaseIterable, Identifiable {
     case mediaAndDisplay
     case system
     case productivity
-    case utilities
-    case developer
-    case integrations
     case info
 
     var id: String { rawValue }
@@ -37,9 +33,6 @@ private enum SettingsTabGroup: String, CaseIterable, Identifiable {
         case .mediaAndDisplay:  return String(localized: "Media & Display")
         case .system:           return String(localized: "System")
         case .productivity:     return String(localized: "Productivity")
-        case .utilities:        return String(localized: "Utilities")
-        case .developer:        return String(localized: "Developer")
-        case .integrations:     return String(localized: "Integrations")
         case .info:             return nil
         }
     }
@@ -52,18 +45,10 @@ private enum SettingsTab: String, CaseIterable, Identifiable {
     case lockScreen
     case media
     case devices
-    case extensions
     case timer
     case calendar
     case hudAndOSD
     case battery
-    case stats
-    case screenAssistant
-    case colorPicker
-    case downloads
-    case shelf
-    case shortcuts
-    case notes
     case about
 
     var id: String { rawValue }
@@ -74,11 +59,7 @@ private enum SettingsTab: String, CaseIterable, Identifiable {
         case .general, .appearance:                                          return .core
         case .media, .liveActivities, .lockScreen, .devices:                 return .mediaAndDisplay
         case .hudAndOSD, .battery:                                           return .system
-        case .timer, .calendar, .notes:                                      return .productivity
-        case .screenAssistant, .colorPicker, .shelf,
-             .downloads, .shortcuts:                                         return .utilities
-        case .stats:                                                         return .developer
-        case .extensions:                                                    return .integrations
+        case .timer, .calendar:                                              return .productivity
         case .about:                                                         return .info
         }
     }
@@ -91,18 +72,10 @@ private enum SettingsTab: String, CaseIterable, Identifiable {
         case .lockScreen: return String(localized: "Lock Screen")
         case .media: return String(localized: "Media")
         case .devices: return String(localized: "Devices")
-        case .extensions: return String(localized: "Extensions")
         case .timer: return String(localized: "Timer")
         case .calendar: return String(localized: "Calendar")
         case .hudAndOSD: return String(localized: "Controls")
         case .battery: return String(localized: "Battery")
-        case .stats: return String(localized: "Stats")
-        case .screenAssistant: return String(localized: "Screen Assistant")
-        case .colorPicker: return String(localized: "Color Picker")
-        case .downloads: return String(localized: "Downloads")
-        case .shelf: return String(localized: "Shelf")
-        case .shortcuts: return String(localized: "Shortcuts")
-        case .notes: return String(localized: "Notes")
         case .about: return String(localized: "About")
         }
     }
@@ -115,18 +88,10 @@ private enum SettingsTab: String, CaseIterable, Identifiable {
         case .lockScreen: return "lock.laptopcomputer"
         case .media: return "play.laptopcomputer"
         case .devices: return "headphones"
-        case .extensions: return "puzzlepiece.extension"
         case .timer: return "timer"
         case .calendar: return "calendar"
         case .hudAndOSD: return "dial.medium.fill"
         case .battery: return "battery.100.bolt"
-        case .stats: return "chart.xyaxis.line"
-        case .screenAssistant: return "brain.head.profile"
-        case .colorPicker: return "eyedropper"
-        case .downloads: return "square.and.arrow.down"
-        case .shelf: return "books.vertical"
-        case .shortcuts: return "keyboard"
-        case .notes: return "note.text"
         case .about: return "info.circle"
         }
     }
@@ -139,18 +104,10 @@ private enum SettingsTab: String, CaseIterable, Identifiable {
         case .lockScreen: return .orange
         case .media: return .green
         case .devices: return Color(red: 0.1, green: 0.11, blue: 0.12)
-        case .extensions: return Color(red: 0.557, green: 0.353, blue: 0.957)
         case .timer: return .red
         case .calendar: return .cyan
         case .hudAndOSD: return .indigo
         case .battery: return Color(red: 0.202, green: 0.783, blue: 0.348, opacity: 1.000)
-        case .stats: return .teal
-        case .screenAssistant: return .pink
-        case .colorPicker: return .accentColor
-        case .downloads: return .gray
-        case .shelf: return .brown
-        case .shortcuts: return .orange
-        case .notes: return Color(red: 0.979, green: 0.716, blue: 0.153, opacity: 1.000)
         case .about: return .secondary
         }
     }
@@ -289,12 +246,6 @@ struct SettingsView: View {
     @State private var searchText: String = ""
     @StateObject private var highlightCoordinator = SettingsHighlightCoordinator()
     @Default(.enableMinimalisticUI) var enableMinimalisticUI
-
-    let updaterController: SPUStandardUpdaterController?
-
-    init(updaterController: SPUStandardUpdaterController? = nil) {
-        self.updaterController = updaterController
-    }
 
     var body: some View {
         NavigationSplitView {
@@ -443,36 +394,13 @@ struct SettingsView: View {
         HStack(spacing: 10) {
             sidebarIcon(for: tab)
             Text(LocalizedStringKey(tab.title))
-            if tab == .downloads {
-                Spacer()
-                Text("BETA")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(
-                        Capsule()
-                            .fill(Color.blue)
-                    )
-            } else if tab == .extensions {
-                Spacer()
-                Text("BETA")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(
-                        Capsule()
-                            .fill(Color.blue)
-                    )
-            }
         }
         .padding(.vertical, 4)
     }
 
     private var availableTabs: [SettingsTab] {
         // Ordered to match group layout: core → media & display → system →
-        // productivity → utilities → developer → integrations → info.
+        // productivity → info.
         let ordered: [SettingsTab] = [
             // Core
             .general,
@@ -488,17 +416,6 @@ struct SettingsView: View {
             // Productivity
             .timer,
             .calendar,
-            .notes,
-            // Utilities
-            .screenAssistant,
-            .colorPicker,
-            .shelf,
-            .downloads,
-            .shortcuts,
-            // Developer
-            .stats,
-            // Integrations
-            .extensions,
             // Info
             .about
         ]
@@ -535,11 +452,10 @@ struct SettingsView: View {
     }
 
     private var searchSuggestions: [SettingsSearchEntry] {
-        Array(searchEntries(matching: searchText).filter { $0.tab != .downloads }.prefix(8))
+        Array(searchEntries(matching: searchText).prefix(8))
     }
 
     private func handleSearchSuggestionSelection(_ suggestion: SettingsSearchEntry) {
-        guard suggestion.tab != .downloads else { return }
         highlightCoordinator.focus(on: suggestion)
         selectedTab = suggestion.tab
     }
@@ -804,15 +720,6 @@ struct SettingsView: View {
             SettingsSearchEntry(tab: .calendar, title: "Show full event titles", keywords: ["calendar", "titles"], highlightID: SettingsTab.calendar.highlightID(for: "Show full event titles")),
             SettingsSearchEntry(tab: .calendar, title: "Auto-scroll to next event", keywords: ["calendar", "scroll"], highlightID: SettingsTab.calendar.highlightID(for: "Auto-scroll to next event")),
 
-            // Shelf
-            SettingsSearchEntry(tab: .shelf, title: "Enable shelf", keywords: ["shelf", "dock"], highlightID: SettingsTab.shelf.highlightID(for: "Enable shelf")),
-            SettingsSearchEntry(tab: .shelf, title: "Open shelf tab by default if items added", keywords: ["auto open", "shelf tab"], highlightID: SettingsTab.shelf.highlightID(for: "Open shelf tab by default if items added")),
-            SettingsSearchEntry(tab: .shelf, title: "Expanded drag detection area", keywords: ["shelf", "drag"], highlightID: SettingsTab.shelf.highlightID(for: "Expanded drag detection area")),
-            SettingsSearchEntry(tab: .shelf, title: "Copy items on drag", keywords: ["shelf", "drag", "copy"], highlightID: SettingsTab.shelf.highlightID(for: "Copy items on drag")),
-            SettingsSearchEntry(tab: .shelf, title: "Remove from shelf after dragging", keywords: ["shelf", "drag", "remove"], highlightID: SettingsTab.shelf.highlightID(for: "Remove from shelf after dragging")),
-            SettingsSearchEntry(tab: .shelf, title: "Quick Share Service", keywords: ["shelf", "share", "airdrop", "localsend"], highlightID: SettingsTab.shelf.highlightID(for: "Quick Share Service")),
-            SettingsSearchEntry(tab: .shelf, title: "LocalSend Device Picker Style", keywords: ["localsend", "glass", "picker", "material"], highlightID: SettingsTab.shelf.highlightID(for: "Device Picker Style")),
-
             // Appearance
             SettingsSearchEntry(tab: .appearance, title: "Main screen style", keywords: ["dynamic island", "pill", "non-notch", "display style", "notch style"], highlightID: SettingsTab.appearance.highlightID(for: "Main screen style")),
             SettingsSearchEntry(tab: .appearance, title: "Settings icon in notch", keywords: ["settings button", "toolbar"], highlightID: SettingsTab.appearance.highlightID(for: "Settings icon in notch")),
@@ -863,17 +770,6 @@ struct SettingsView: View {
             SettingsSearchEntry(tab: .lockScreen, title: "Reminder alignment", keywords: ["reminder", "alignment", "position"], highlightID: SettingsTab.lockScreen.highlightID(for: "Reminder alignment")),
             SettingsSearchEntry(tab: .lockScreen, title: "Reminder vertical offset", keywords: ["reminder", "offset", "position"], highlightID: SettingsTab.lockScreen.highlightID(for: "Reminder vertical offset")),
 
-            // Extensions
-            SettingsSearchEntry(tab: .extensions, title: "Enable third-party extensions", keywords: ["extensions", "authorization", "third party"], highlightID: SettingsTab.extensions.highlightID(for: "Enable third-party extensions")),
-            SettingsSearchEntry(tab: .extensions, title: "Browse the Marketplace", keywords: ["marketplace", "extensions", "install", "download", "store", "getatoll"], highlightID: SettingsTab.extensions.highlightID(for: "Browse the Marketplace")),
-            SettingsSearchEntry(tab: .extensions, title: "Allow extension live activities", keywords: ["extensions", "live activities", "permissions"], highlightID: SettingsTab.extensions.highlightID(for: "Allow extension live activities")),
-            SettingsSearchEntry(tab: .extensions, title: "Allow extension lock screen widgets", keywords: ["extensions", "lock screen", "widgets"], highlightID: SettingsTab.extensions.highlightID(for: "Allow extension lock screen widgets")),
-            SettingsSearchEntry(tab: .extensions, title: "Enable extension diagnostics logging", keywords: ["extensions", "diagnostics", "logging"], highlightID: SettingsTab.extensions.highlightID(for: "Enable extension diagnostics logging")),
-            SettingsSearchEntry(tab: .extensions, title: "Manage app permissions", keywords: ["extensions", "permissions", "apps"], highlightID: SettingsTab.extensions.highlightID(for: "App permissions list")),
-
-            // Shortcuts
-            SettingsSearchEntry(tab: .shortcuts, title: "Enable global keyboard shortcuts", keywords: ["keyboard", "shortcut"], highlightID: SettingsTab.shortcuts.highlightID(for: "Enable global keyboard shortcuts")),
-
             // Timer
             SettingsSearchEntry(tab: .timer, title: "Enable timer feature", keywords: ["timer", "enable"], highlightID: SettingsTab.timer.highlightID(for: "Enable timer feature")),
             SettingsSearchEntry(tab: .timer, title: "Mirror macOS Clock timers", keywords: ["system timer", "clock app"], highlightID: SettingsTab.timer.highlightID(for: "Mirror macOS Clock timers")),
@@ -886,42 +782,12 @@ struct SettingsView: View {
             SettingsSearchEntry(tab: .timer, title: "Solid colour", keywords: ["timer colour", "custom"], highlightID: SettingsTab.timer.highlightID(for: "Solid colour")),
             SettingsSearchEntry(tab: .timer, title: "Progress style", keywords: ["progress", "bar", "ring"], highlightID: SettingsTab.timer.highlightID(for: "Progress style")),
             SettingsSearchEntry(tab: .timer, title: "Accent colour", keywords: ["accent", "timer"], highlightID: SettingsTab.timer.highlightID(for: "Accent colour")),
-
-            // Stats
-            SettingsSearchEntry(tab: .stats, title: "Enable system stats monitoring", keywords: ["stats", "monitoring"], highlightID: SettingsTab.stats.highlightID(for: "Enable system stats monitoring")),
-            SettingsSearchEntry(tab: .stats, title: "Enable LLM Usage Monitor", keywords: ["llm", "usage", "ai", "monitor"], highlightID: SettingsTab.stats.highlightID(for: "Enable LLM Usage Monitor")),
-            SettingsSearchEntry(tab: .stats, title: "Claude Provider", keywords: ["llm", "claude", "provider", "toggle"], highlightID: SettingsTab.stats.highlightID(for: "Claude Provider")),
-            SettingsSearchEntry(tab: .stats, title: "Codex Provider", keywords: ["llm", "codex", "provider", "toggle"], highlightID: SettingsTab.stats.highlightID(for: "Codex Provider")),
-            SettingsSearchEntry(tab: .stats, title: "Cursor Provider", keywords: ["llm", "cursor", "provider", "toggle"], highlightID: SettingsTab.stats.highlightID(for: "Cursor Provider")),
-            SettingsSearchEntry(tab: .stats, title: "Antigravity Provider", keywords: ["llm", "antigravity", "provider", "toggle"], highlightID: SettingsTab.stats.highlightID(for: "Antigravity Provider")),
-            SettingsSearchEntry(tab: .stats, title: "New API Provider", keywords: ["llm", "new api", "newapi", "provider", "toggle"], highlightID: SettingsTab.stats.highlightID(for: "New API Provider")),
-            SettingsSearchEntry(tab: .stats, title: "New API Accounts", keywords: ["llm", "new api", "newapi", "accounts", "key", "token"], highlightID: SettingsTab.stats.highlightID(for: "New API Accounts")),
-            SettingsSearchEntry(tab: .stats, title: "Stop monitoring after closing the notch", keywords: ["stats", "auto stop"], highlightID: SettingsTab.stats.highlightID(for: "Stop monitoring after closing the notch")),
-            SettingsSearchEntry(tab: .stats, title: "CPU Usage", keywords: ["cpu", "graph"], highlightID: SettingsTab.stats.highlightID(for: "CPU Usage")),
-            SettingsSearchEntry(tab: .stats, title: "Temperature unit", keywords: ["cpu", "temperature", "celsius", "fahrenheit"], highlightID: SettingsTab.stats.highlightID(for: "Temperature unit")),
-            SettingsSearchEntry(tab: .stats, title: "Memory Usage", keywords: ["memory", "ram"], highlightID: SettingsTab.stats.highlightID(for: "Memory Usage")),
-            SettingsSearchEntry(tab: .stats, title: "GPU Usage", keywords: ["gpu", "graphics"], highlightID: SettingsTab.stats.highlightID(for: "GPU Usage")),
-            SettingsSearchEntry(tab: .stats, title: "Network Activity", keywords: ["network", "graph"], highlightID: SettingsTab.stats.highlightID(for: "Network Activity")),
-            SettingsSearchEntry(tab: .stats, title: "Disk I/O", keywords: ["disk", "io"], highlightID: SettingsTab.stats.highlightID(for: "Disk I/O")),
-
-
-            // Screen Assistant
-            SettingsSearchEntry(tab: .screenAssistant, title: "Enable Screen Assistant", keywords: ["screen assistant", "ai"], highlightID: SettingsTab.screenAssistant.highlightID(for: "Enable Screen Assistant")),
-            SettingsSearchEntry(tab: .screenAssistant, title: "Display Mode", keywords: ["screen assistant", "mode"], highlightID: SettingsTab.screenAssistant.highlightID(for: "Display Mode")),
-
-            // Color Picker
-            SettingsSearchEntry(tab: .colorPicker, title: "Enable Color Picker", keywords: ["color picker", "eyedropper"], highlightID: SettingsTab.colorPicker.highlightID(for: "Enable Color Picker")),
-            SettingsSearchEntry(tab: .colorPicker, title: "Show Color Picker Icon", keywords: ["color icon", "toolbar"], highlightID: SettingsTab.colorPicker.highlightID(for: "Show Color Picker Icon")),
-            SettingsSearchEntry(tab: .colorPicker, title: "Display Mode", keywords: ["color", "list"], highlightID: SettingsTab.colorPicker.highlightID(for: "Display Mode")),
-            SettingsSearchEntry(tab: .colorPicker, title: "History Size", keywords: ["color history"], highlightID: SettingsTab.colorPicker.highlightID(for: "History Size")),
-            SettingsSearchEntry(tab: .colorPicker, title: "Show All Color Formats", keywords: ["hex", "hsl", "color formats"], highlightID: SettingsTab.colorPicker.highlightID(for: "Show All Color Formats")),
-
         ]
     }
 
     private func isTabVisible(_ tab: SettingsTab) -> Bool {
         switch tab {
-        case .timer, .stats, .screenAssistant, .colorPicker, .shelf, .notes:
+        case .timer:
             return !enableMinimalisticUI
         default:
             return true
@@ -955,10 +821,6 @@ struct SettingsView: View {
             SettingsForm(tab: .devices) {
                 DevicesSettingsView()
             }
-        case .extensions:
-            SettingsForm(tab: .extensions) {
-                ExtensionsSettingsView()
-            }
         case .timer:
             SettingsForm(tab: .timer) {
                 TimerSettings()
@@ -975,43 +837,9 @@ struct SettingsView: View {
             SettingsForm(tab: .battery) {
                 Charge()
             }
-        case .stats:
-            SettingsForm(tab: .stats) {
-                StatsSettings()
-            }
-        case .screenAssistant:
-            SettingsForm(tab: .screenAssistant) {
-                ScreenAssistantSettings()
-            }
-        case .colorPicker:
-            SettingsForm(tab: .colorPicker) {
-                ColorPickerSettings()
-            }
-        case .downloads:
-            SettingsForm(tab: .downloads) {
-                Downloads()
-            }
-        case .shelf:
-            SettingsForm(tab: .shelf) {
-                Shelf()
-            }
-        case .shortcuts:
-            SettingsForm(tab: .shortcuts) {
-                Shortcuts()
-            }
-        case .notes:
-            SettingsForm(tab: .notes) {
-                NotesSettingsView()
-            }
         case .about:
-            if let controller = updaterController {
-                SettingsForm(tab: .about) {
-                    About(updaterController: controller)
-                }
-            } else {
-                SettingsForm(tab: .about) {
-                    About(updaterController: SPUStandardUpdaterController(startingUpdater: false, updaterDelegate: nil, userDriverDelegate: nil))
-                }
+            SettingsForm(tab: .about) {
+                About()
             }
         }
     }
@@ -1021,7 +849,6 @@ struct GeneralSettings: View {
     @State private var screens: [String] = NSScreen.screens.compactMap { $0.localizedName }
     @EnvironmentObject var vm: DynamicIslandViewModel
     @ObservedObject var coordinator = DynamicIslandViewCoordinator.shared
-    @Default(.mirrorShape) var mirrorShape
     @Default(.showEmojis) var showEmojis
     @Default(.gestureSensitivity) var gestureSensitivity
     @Default(.minimumHoverDuration) var minimumHoverDuration
@@ -1575,141 +1402,6 @@ struct Charge: View {
             }
         }
         .navigationTitle("Battery")
-    }
-}
-
-struct Downloads: View {
-    @Default(.selectedDownloadIndicatorStyle) var selectedDownloadIndicatorStyle
-    @Default(.selectedDownloadIconStyle) var selectedDownloadIconStyle
-    @Default(.enableDownloadListener) var enableDownloadListener
-
-    private func highlightID(_ title: String) -> String {
-        SettingsTab.downloads.highlightID(for: title)
-    }
-
-    var body: some View {
-        SwiftUI.Form {
-            Section {
-                Defaults.Toggle(key: .enableDownloadListener) {
-                    Text("Enable download detection")
-                }
-                .settingsHighlight(id: highlightID("Enable download detection"))
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Download indicator style")
-                        .font(.system(size: 13, weight: .semibold))
-                        // .white is invisible against a light Settings window;
-                        // the label follows the appearance like every other one.
-                        .foregroundStyle(enableDownloadListener ? Color.primary : Color.secondary)
-
-                    HStack(spacing: 16) {
-                        DownloadStyleButton(
-                            style: .progress,
-                            isSelected: selectedDownloadIndicatorStyle == .progress,
-                            disabled: !enableDownloadListener
-                        ) {
-                            selectedDownloadIndicatorStyle = .progress
-                        }
-
-                        DownloadStyleButton(
-                            style: .circle,
-                            isSelected: selectedDownloadIndicatorStyle == .circle,
-                            disabled: !enableDownloadListener
-                        ) {
-                            selectedDownloadIndicatorStyle = .circle
-                        }
-                    }
-
-                    Text("A bar that fills as the download runs, or a ring around the notch's corner.")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
-                .settingsHighlight(id: highlightID("Download indicator style"))
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Defaults.Toggle(key: .showDownloadSpeed) {
-                        Text("Show download speed")
-                    }
-                    .disabled(!enableDownloadListener)
-
-                    Text("Adds the current rate beside the indicator, measured from how fast the files in your Downloads folder are growing.")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
-                .settingsHighlight(id: highlightID("Show download speed"))
-            } header: {
-                Text("Download Detection")
-            } footer: {
-                Text("Shows a live activity in the Dynamic Island while a file is downloading. Works with Safari, Firefox, and Chrome and the browsers built on it — Edge, Brave, Arc, Vivaldi and Opera. Only your Downloads folder is watched, so a file saved anywhere else will not appear.")
-            }
-        }
-        .navigationTitle("Downloads")
-    }
-
-    struct DownloadStyleButton: View {
-        let style: DownloadIndicatorStyle
-        let isSelected: Bool
-        let disabled: Bool
-        let action: () -> Void
-
-        @State private var isHovering = false
-
-        var body: some View {
-            VStack(spacing: 8) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(backgroundColor)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .strokeBorder(borderColor, lineWidth: isSelected ? 2 : 1)
-                        )
-
-                    if style == .progress {
-                        ProgressView()
-                            .progressViewStyle(.linear)
-                            .tint(.accentColor)
-                            .frame(width: 40)
-                    } else {
-                        SpinningCircleDownloadView()
-                    }
-                }
-                .frame(width: 80, height: 60)
-                .onHover { hovering in
-                    if !disabled {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            isHovering = hovering
-                        }
-                    }
-                }
-
-                Text(style.rawValue)
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.center)
-                    .frame(width: 100)
-                    .foregroundStyle(disabled ? .secondary : .primary)
-            }
-            .contentShape(Rectangle())
-            .onTapGesture {
-                if !disabled {
-                    action()
-                }
-            }
-            .opacity(disabled ? 0.5 : 1.0)
-        }
-
-        private var backgroundColor: Color {
-            if disabled { return Color(nsColor: .controlBackgroundColor) }
-            if isSelected { return Color.accentColor.opacity(0.1) }
-            if isHovering { return Color.primary.opacity(0.05) }
-            return Color(nsColor: .controlBackgroundColor)
-        }
-
-        private var borderColor: Color {
-            if isSelected { return Color.accentColor }
-            if isHovering { return Color.primary.opacity(0.1) }
-            return Color.clear
-        }
     }
 }
 
@@ -2824,170 +2516,6 @@ struct HUD: View {
     }
 }
 
-private struct MusicSourceSelector: View {
-    @Binding var selection: MediaControllerType
-    let controllers: [MediaControllerType]
-
-    var body: some View {
-        ScrollViewReader { proxy in
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 12) {
-                    ForEach(controllers) { controller in
-                        MusicSourceCard(
-                            controller: controller,
-                            isSelected: selection == controller
-                        ) {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                selection = controller
-                            }
-                        }
-                        .id(controller)
-                    }
-                }
-                .padding(.horizontal, 2)
-                .padding(.vertical, 3)
-            }
-            .onAppear {
-                proxy.scrollTo(selection, anchor: .center)
-            }
-            .onChange(of: selection) { _, controller in
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    proxy.scrollTo(controller, anchor: .center)
-                }
-            }
-        }
-        .frame(height: 112)
-    }
-}
-
-private struct MusicSourceCard: View {
-    let controller: MediaControllerType
-    let isSelected: Bool
-    let action: () -> Void
-
-    @State private var isHovering = false
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 9) {
-                Group {
-                    if let logoAssetName = controller.officialLogoAssetName {
-                        Image(logoAssetName)
-                            .resizable()
-                            .scaledToFit()
-                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    } else {
-                        AppIconImage(
-                            bundleIdentifiers: controller.applicationBundleIdentifiers,
-                            symbolFallback: controller.fallbackSymbol,
-                            symbolColor: controller.fallbackColor,
-                            size: 42
-                        )
-                        .font(.system(size: 24, weight: .semibold))
-                    }
-                }
-                .frame(width: 42, height: 42)
-
-                Text(controller.localizedName)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-            }
-            .frame(width: 112, height: 92)
-            .background {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(backgroundColor)
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(borderColor, lineWidth: isSelected ? 2.5 : 1)
-            }
-            .scaleEffect(isHovering && !isSelected ? 1.015 : 1)
-            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.15)) {
-                isHovering = hovering
-            }
-        }
-        .accessibilityLabel(controller.localizedName)
-    }
-
-    private var backgroundColor: Color {
-        if isSelected {
-            return Color.accentColor.opacity(0.16)
-        }
-        if isHovering {
-            return Color(nsColor: .controlBackgroundColor).opacity(0.92)
-        }
-        return Color(nsColor: .controlBackgroundColor).opacity(0.7)
-    }
-
-    private var borderColor: Color {
-        if isSelected {
-            return .accentColor
-        }
-        return Color(nsColor: .separatorColor).opacity(isHovering ? 0.8 : 0.45)
-    }
-}
-
-private extension MediaControllerType {
-    var officialLogoAssetName: String? {
-        switch self {
-        case .youtubeMusic: return "YouTubeMusicLogo"
-        case .amazonMusic: return "AmazonMusicLogo"
-        case .tidal: return "TidalLogo"
-        case .cider: return "CiderLogo"
-        default: return nil
-        }
-    }
-
-    var applicationBundleIdentifiers: [String] {
-        switch self {
-        case .nowPlaying:
-            return []
-        case .appleMusic:
-            return ["com.apple.Music"]
-        case .spotify:
-            return ["com.spotify.client"]
-        case .youtubeMusic:
-            return ["com.github.th-ch.youtube-music"]
-        case .amazonMusic:
-            return ["com.amazon.music"]
-        case .tidal:
-            return [TidalController.bundleIdentifier]
-        case .cider:
-            return ["sh.cider.genten.mac"]
-        }
-    }
-
-    var fallbackSymbol: String {
-        switch self {
-        case .nowPlaying: return "waveform"
-        case .appleMusic: return "music.note"
-        case .spotify: return "dot.radiowaves.left.and.right"
-        case .youtubeMusic: return "play.rectangle.fill"
-        case .amazonMusic: return "music.note.list"
-        case .tidal: return "waveform.path"
-        case .cider: return "cup.and.saucer.fill"
-        }
-    }
-
-    var fallbackColor: Color {
-        switch self {
-        case .nowPlaying: return .accentColor
-        case .appleMusic: return .pink
-        case .spotify: return .green
-        case .youtubeMusic: return .red
-        case .amazonMusic: return .cyan
-        case .tidal: return .primary
-        case .cider: return .orange
-        }
-    }
-}
-
 struct Media: View {
     @Default(.waitInterval) var waitInterval
     @Default(.mediaController) var mediaController
@@ -3035,47 +2563,6 @@ struct Media: View {
 
     var body: some View {
         Form {
-            Section {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Music Source")
-                        .font(.system(size: 13, weight: .semibold))
-
-                    MusicSourceSelector(
-                        selection: $mediaController,
-                        controllers: availableMediaControllers
-                    )
-                }
-                .onChange(of: mediaController) { _, _ in
-                    NotificationCenter.default.post(
-                        name: Notification.Name.mediaControllerChanged,
-                        object: nil
-                    )
-                }
-                .settingsHighlight(id: highlightID("Music Source"))
-            } header: {
-                Text("Media Source")
-            } footer: {
-                if MusicManager.shared.isNowPlayingDeprecated {
-                    HStack {
-                        Text("YouTube Music requires this third-party app to be installed: ")
-                            .foregroundStyle(.secondary)
-                            .font(.caption)
-                        Link("https://github.com/th-ch/youtube-music", destination: URL(string: "https://github.com/th-ch/youtube-music")!)
-                            .font(.caption)
-                            .foregroundColor(.blue) // Ensures it's visibly a link
-                    }
-                } else {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(String(localized: "'Now Playing' was the only option on previous versions and works with all media apps."))
-                        if mediaController == .amazonMusic || mediaController == .tidal || mediaController == .cider {
-                            Text(mediaController.description)
-                        }
-                    }
-                    .foregroundStyle(.secondary)
-                    .font(.caption)
-                }
-            }
-
             if mediaController == .spotify {
                 SpotifyAuthSettingsSection()
                 SpotifyLikeButtonSettingsSection()
@@ -3423,15 +2910,6 @@ struct Media: View {
             }
         }
         .navigationTitle("Media")
-    }
-
-    // Only show controller options that are available on this macOS version
-    private var availableMediaControllers: [MediaControllerType] {
-        if MusicManager.shared.isNowPlayingDeprecated {
-            return MediaControllerType.allCases.filter { $0 != .nowPlaying }
-        } else {
-            return MediaControllerType.allCases
-        }
     }
 
     private var unavailableBlurRow: some View {
@@ -3914,8 +3392,6 @@ struct CalendarSettings: View {
 
 struct About: View {
     @State private var showBuildNumber: Bool = false
-    @Default(.updateChannel) var updateChannel
-    let updaterController: SPUStandardUpdaterController
     @Environment(\.openWindow) var openWindow
     var body: some View {
         VStack {
@@ -3930,16 +3406,6 @@ struct About: View {
                     HStack {
                         Text("Version")
                         Spacer()
-
-                        // Channel badge
-                        Text(UpdateChannel.buildChannel.displayName)
-                            .font(.caption2)
-                            .fontWeight(.semibold)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color(UpdateChannel.buildChannel.badgeColor).opacity(0.2))
-                            .foregroundStyle(Color(UpdateChannel.buildChannel.badgeColor))
-                            .clipShape(Capsule())
 
                         if showBuildNumber {
                             Text("(\(Bundle.main.buildVersionNumber ?? ""))")
@@ -3956,8 +3422,6 @@ struct About: View {
                 } header: {
                     Text("Version info")
                 }
-
-                UpdaterSettingsView(updater: updaterController.updater)
 
                 HStack(spacing: 30) {
                     Spacer(minLength: 0)
@@ -3999,44 +3463,6 @@ struct About: View {
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.bottom, 5)
 
-                Section {
-                    ForEach(UpdateChannel.availableChannels) { channel in
-                        Button {
-                            updateChannel = channel
-                        } label: {
-                            HStack(spacing: 10) {
-                                Image(systemName: channel.badgeIcon)
-                                    .font(.system(size: 13))
-                                    .foregroundStyle(Color(channel.badgeColor))
-                                    .frame(width: 20, alignment: .center)
-
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text(channel.displayName)
-                                        .foregroundStyle(.primary)
-                                    Text(channel.description)
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                }
-
-                                Spacer()
-
-                                if updateChannel == channel {
-                                    Image(systemName: "checkmark")
-                                        .font(.system(size: 12, weight: .semibold))
-                                        .foregroundStyle(Color(channel.badgeColor))
-                                }
-                            }
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                    }
-
-                    Text("Current build: \(UpdateChannel.buildChannel.displayName)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } header: {
-                    Text("Update channel")
-                }
                 VStack(spacing: 0) {
                     Divider()
                         .padding(.bottom, 5)
@@ -4048,13 +3474,6 @@ struct About: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
             }
-        }
-        .toolbar {
-            //            Button("Welcome window") {
-            //                openWindow(id: "onboarding")
-            //            }
-            //            .controlSize(.extraLarge)
-            CheckForUpdatesView(updater: updaterController.updater)
         }
         .navigationTitle("About")
     }
@@ -4199,191 +3618,6 @@ private final class SettingsLoopingPlayerController {
     deinit {
         player.pause()
         looper = nil
-    }
-}
-
-struct Shelf: View {
-    @Default(.quickShareProvider) var quickShareProvider
-    @Default(.expandedDragDetection) var expandedDragDetection
-    @Default(.copyOnDrag) var copyOnDrag
-    @Default(.autoRemoveShelfItems) var autoRemoveShelfItems
-    @StateObject private var quickShareService = QuickShareService.shared
-    @ObservedObject private var fullDiskAccessPermission = FullDiskAccessPermissionStore.shared
-    @ObservedObject private var shelfFolderAccessPermission = ShelfFolderAccessPermissionStore.shared
-
-    private var hasDocumentsAndDownloadsAccess: Bool {
-        shelfFolderAccessPermission.hasDocumentsAndDownloadsAccess
-    }
-
-    private var canEnableShelf: Bool {
-        fullDiskAccessPermission.isAuthorized || hasDocumentsAndDownloadsAccess
-    }
-
-    private var selectedProvider: QuickShareProvider? {
-        quickShareService.availableProviders.first(where: { $0.id == quickShareProvider })
-    }
-
-    init() {
-        QuickShareService.shared.ensureDiscovered()
-    }
-
-    private func highlightID(_ title: String) -> String {
-        SettingsTab.shelf.highlightID(for: title)
-    }
-
-    var body: some View {
-        Form {
-            if !canEnableShelf || !fullDiskAccessPermission.isAuthorized {
-                Section {
-                    if !canEnableShelf {
-                        SettingsPermissionCallout(
-                            title: "Additional folder access required",
-                            message: "Enable Full Disk Access, or grant access to both Documents and Downloads folders to use Shelf.",
-                            icon: "folder.badge.questionmark",
-                            iconColor: .orange,
-                            requestButtonTitle: "Request Folder Access",
-                            openSettingsButtonTitle: "Open Privacy & Security",
-                            requestAction: { shelfFolderAccessPermission.requestAccessPrompt() },
-                            openSettingsAction: { shelfFolderAccessPermission.openSystemSettings() }
-                        )
-                    }
-
-                    if !fullDiskAccessPermission.isAuthorized {
-                        SettingsPermissionCallout(
-                            title: "Full Disk Access for global mode",
-                            message: "Without Full Disk Access, Shelf can only read files from Documents and Downloads. Grant Full Disk Access to make Shelf work globally.",
-                            icon: "externaldrive.fill",
-                            iconColor: .purple,
-                            requestButtonTitle: "Request Full Disk Access",
-                            openSettingsButtonTitle: "Open Privacy & Security",
-                            requestAction: { fullDiskAccessPermission.requestAccessPrompt() },
-                            openSettingsAction: { fullDiskAccessPermission.openSystemSettings() }
-                        )
-                    }
-                } header: {
-                    Text("Permissions")
-                }
-            }
-
-            Section {
-                Defaults.Toggle(key: .dynamicShelf) {
-                    Text("Enable shelf")
-                }
-                .disabled(!canEnableShelf)
-                .settingsHighlight(id: highlightID("Enable shelf"))
-
-                Defaults.Toggle(key: .openShelfByDefault) {
-                    Text("Open shelf tab by default if items added")
-                }
-                .settingsHighlight(id: highlightID("Open shelf tab by default if items added"))
-
-                Defaults.Toggle(key: .expandedDragDetection) {
-                    Text("Expanded drag detection area")
-                }
-                .settingsHighlight(id: highlightID("Expanded drag detection area"))
-
-                Defaults.Toggle(key: .copyOnDrag) {
-                    Text("Copy items on drag")
-                }
-                .settingsHighlight(id: highlightID("Copy items on drag"))
-
-                Defaults.Toggle(key: .allowMoveOnDrag) {
-                    Text("Allow moving files when dragging out")
-                }
-                .settingsHighlight(id: highlightID("Allow moving files when dragging out"))
-
-                Defaults.Toggle(key: .autoRemoveShelfItems) {
-                    Text("Remove from shelf after dragging")
-                }
-                .settingsHighlight(id: highlightID("Remove from shelf after dragging"))
-            } header: {
-                HStack {
-                    Text("General")
-                }
-            }
-
-            Section {
-                Picker("Quick Share Service", selection: $quickShareProvider) {
-                    ForEach(quickShareService.availableProviders, id: \.id) { provider in
-                        HStack {
-                            QuickShareProviderIconImage(provider: provider, size: 16)
-                            Text(provider.id)
-                        }
-                        .tag(provider.id)
-                    }
-                }
-                .pickerStyle(.menu)
-                .settingsHighlight(id: highlightID("Quick Share Service"))
-
-                if let selectedProvider {
-                    HStack {
-                        QuickShareProviderIconImage(provider: selectedProvider, size: 16)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Currently selected: \(selectedProvider.id)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Text("Files dropped on the shelf will be shared via this service")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .padding(.vertical, 4)
-                }
-            } header: {
-                HStack {
-                    Text("Quick Share")
-                }
-            } footer: {
-                Text("Choose which service to use when sharing files from the shelf. Drag files onto the shelf or click the shelf button to pick files.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            
-            if quickShareProvider == "LocalSend" {
-                LocalSendSettingsSection(highlightID: highlightID)
-            }
-        }
-        .accentColor(.effectiveAccent)
-        .navigationTitle("Shelf")
-        .onAppear {
-            fullDiskAccessPermission.refreshStatus()
-            shelfFolderAccessPermission.refreshStatus()
-        }
-    }
-}
-
-// MARK: - LocalSend Settings Section
-
-private struct LocalSendSettingsSection: View {
-    let highlightID: (String) -> String
-    
-    @Default(.localSendDevicePickerGlassMode) private var glassMode
-    @Default(.localSendDevicePickerLiquidGlassVariant) private var liquidGlassVariant
-    
-    var body: some View {
-        Section {
-            Picker("Device Picker Style", selection: $glassMode) {
-                ForEach(LockScreenGlassCustomizationMode.allCases) { mode in
-                    Text(mode.localizedName).tag(mode)
-                }
-            }
-            .pickerStyle(.menu)
-            
-            if glassMode == .customLiquid {
-                Picker("Liquid Glass Variant", selection: $liquidGlassVariant) {
-                    ForEach(LiquidGlassVariant.allCases) { variant in
-                        Text("Variant \(variant.rawValue)").tag(variant)
-                    }
-                }
-                .pickerStyle(.menu)
-            }
-        } header: {
-            Text("LocalSend Device Picker")
-        } footer: {
-            Text("Customize the appearance of the LocalSend device selection popup that appears when you drop files.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
     }
 }
 
@@ -4655,9 +3889,6 @@ struct LiveActivitiesSettings: View {
 
 struct Appearance: View {
     @ObservedObject var coordinator = DynamicIslandViewCoordinator.shared
-    @ObservedObject var webcamManager = WebcamManager.shared
-    @Default(.mirrorShape) var mirrorShape
-    @Default(.selectedCameraID) var selectedCameraID
     @Default(.sliderColor) var sliderColor
     @Default(.useMusicVisualizer) var useMusicVisualizer
     @Default(.customVisualizers) var customVisualizers
@@ -5054,34 +4285,6 @@ struct Appearance: View {
             }
 
             Section {
-                Defaults.Toggle(key: .showMirror) {
-                    Text("Enable Dynamic mirror")
-                }
-                .disabled(!checkVideoInput())
-                .settingsHighlight(id: highlightID("Enable Dynamic mirror"))
-                Picker("Mirror shape", selection: $mirrorShape) {
-                    Text("Circle")
-                        .tag(MirrorShapeEnum.circle)
-                    Text("Square")
-                        .tag(MirrorShapeEnum.rectangle)
-                }
-                .settingsHighlight(id: highlightID("Mirror shape"))
-                
-                if webcamManager.cameraAvailable {
-                    Picker("Mirror Camera", selection: $selectedCameraID) {
-                        ForEach(webcamManager.availableCameras, id: \.uniqueID) { device in
-                            Text(device.localizedName)
-                                .tag(device.uniqueID)
-                        }
-                    }
-                    .onChange(of: selectedCameraID) { _, _ in
-                        if Defaults[.showMirror] {
-                            webcamManager.stopSession()
-                            webcamManager.startSession()
-                        }
-                    }
-                    .settingsHighlight(id: highlightID("Mirror Camera"))
-                }
                 Defaults.Toggle(key: .showNotHumanFace) {
                     Text("Idle Animation")
                 }
@@ -5091,9 +4294,6 @@ struct Appearance: View {
                     Text("Additional features")
                 }
             }
-
-            // MARK: - Custom Idle Animations Section
-            IdleAnimationsSettingsSection()
 
             Section {
                 VStack(alignment: .leading, spacing: 12) {
@@ -5293,14 +4493,6 @@ struct Appearance: View {
             selectedAppIconID = nil
             applySelectedAppIcon()
         }
-    }
-
-    func checkVideoInput() -> Bool {
-        if let _ = AVCaptureDevice.default(for: .video) {
-            return true
-        }
-
-        return false
     }
 
     @ViewBuilder
@@ -6874,144 +6066,6 @@ private func copyLatestCrashReport() {
     }
 }
 
-struct Shortcuts: View {
-    @Default(.enableTimerFeature) var enableTimerFeature
-    @Default(.enableShortcuts) var enableShortcuts
-    @Default(.enableStatsFeature) var enableStatsFeature
-    @Default(.enableColorPickerFeature) var enableColorPickerFeature
-
-    private func highlightID(_ title: String) -> String {
-        SettingsTab.shortcuts.highlightID(for: title)
-    }
-
-    var body: some View {
-        Form {
-            Section {
-                Defaults.Toggle(key: .enableShortcuts) {
-                    Text("Enable global keyboard shortcuts")
-                }
-                .settingsHighlight(id: highlightID("Enable global keyboard shortcuts"))
-            } header: {
-                Text("General")
-            } footer: {
-                Text("When disabled, all keyboard shortcuts will be inactive. You can still use the UI controls.")
-                    .multilineTextAlignment(.trailing)
-                    .foregroundStyle(.secondary)
-                    .font(.caption)
-            }
-
-            if enableShortcuts {
-                Section {
-                    KeyboardShortcuts.Recorder("Toggle Sneak Peek:", name: .toggleSneakPeek)
-                        .disabled(!enableShortcuts)
-                } header: {
-                    Text("Media")
-                } footer: {
-                    Text("Sneak Peek shows the media title and artist under the notch for a few seconds.")
-                        .multilineTextAlignment(.trailing)
-                        .foregroundStyle(.secondary)
-                        .font(.caption)
-                }
-
-                Section {
-                    KeyboardShortcuts.Recorder("Toggle Notch Open:", name: .toggleNotchOpen)
-                        .disabled(!enableShortcuts)
-                } header: {
-                    Text("Navigation")
-                } footer: {
-                    Text("Toggle the Dynamic Island open or closed from anywhere.")
-                        .multilineTextAlignment(.trailing)
-                        .foregroundStyle(.secondary)
-                        .font(.caption)
-                }
-
-                Section {
-                    HStack {
-                        VStack(alignment: .leading) {
-                            KeyboardShortcuts.Recorder("Start Demo Timer:", name: .startDemoTimer)
-                                .disabled(!enableShortcuts || !enableTimerFeature)
-                            if !enableTimerFeature {
-                                Text("Timer feature is disabled")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .padding(.top, 2)
-                            }
-                        }
-                        Spacer()
-                    }
-                } header: {
-                    Text("Timer")
-                } footer: {
-                    Text("Starts a 5-minute demo timer to test the timer live activity feature. Only works when timer feature is enabled.")
-                        .multilineTextAlignment(.trailing)
-                        .foregroundStyle(.secondary)
-                        .font(.caption)
-                }
-
-                Section {
-                    HStack {
-                        VStack(alignment: .leading) {
-                            KeyboardShortcuts.Recorder("Screen Assistant:", name: .screenAssistantPanel)
-                                .disabled(!enableShortcuts || !Defaults[.enableScreenAssistant])
-                            if !Defaults[.enableScreenAssistant] {
-                                Text("Screen Assistant feature is disabled")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .padding(.top, 2)
-                            }
-                        }
-                        Spacer()
-                    }
-                } header: {
-                    Text("AI Assistant")
-                } footer: {
-                    Text("Opens the AI assistant panel for file analysis and conversation. Default is Cmd+Shift+A. Only works when screen assistant feature is enabled.")
-                        .multilineTextAlignment(.trailing)
-                        .foregroundStyle(.secondary)
-                        .font(.caption)
-                }
-
-                Section {
-                    HStack {
-                        VStack(alignment: .leading) {
-                            KeyboardShortcuts.Recorder("Color Picker Panel:", name: .colorPickerPanel)
-                                .disabled(!enableShortcuts || !enableColorPickerFeature)
-                            if !enableColorPickerFeature {
-                                Text("Color Picker feature is disabled")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .padding(.top, 2)
-                            }
-                        }
-                        Spacer()
-                    }
-                } header: {
-                    Text("Color Picker")
-                } footer: {
-                    Text("Opens the color picker panel for screen color capture. Default is Cmd+Shift+P. Only works when color picker feature is enabled.")
-                        .multilineTextAlignment(.trailing)
-                        .foregroundStyle(.secondary)
-                        .font(.caption)
-                }
-            } else {
-                Section {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Keyboard shortcuts are disabled")
-                            .font(.headline)
-                            .foregroundStyle(.secondary)
-
-                        Text("Enable global keyboard shortcuts above to customize your shortcuts.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.vertical, 8)
-                }
-            }
-        }
-        .navigationTitle("Shortcuts")
-    }
-}
-
 func proFeatureBadge() -> some View {
     Text("Upgrade to Pro")
         .foregroundStyle(Color(red: 0.545, green: 0.196, blue: 0.98))
@@ -7673,789 +6727,6 @@ private struct TimerPresetComponentControl: View {
     }
 }
 
-struct StatsSettings: View {
-    @ObservedObject var statsManager = StatsManager.shared
-    @Default(.enableStatsFeature) var enableStatsFeature
-    @Default(.enableLLMUsageFeature) var enableLLMUsageFeature
-    @Default(.enableNewAPIProvider) var enableNewAPIProvider
-    @Default(.statsStopWhenNotchCloses) var statsStopWhenNotchCloses
-    @Default(.statsUpdateInterval) var statsUpdateInterval
-    @Default(.showCpuGraph) var showCpuGraph
-    @Default(.showMemoryGraph) var showMemoryGraph
-    @Default(.showGpuGraph) var showGpuGraph
-    @Default(.showNetworkGraph) var showNetworkGraph
-    @Default(.showDiskGraph) var showDiskGraph
-    @Default(.cpuTemperatureUnit) var cpuTemperatureUnit
-    @State private var newAPIAccounts = Defaults[.newAPIAccounts]
-    @State private var isNewAPIEditorPresented = false
-    @State private var editingNewAPIAccount: NewAPIAccount?
-    @State private var accountPendingDeletion: NewAPIAccount?
-    @State private var newAPIAccountErrorMessage: String?
-
-    private func highlightID(_ title: String) -> String {
-        SettingsTab.stats.highlightID(for: title)
-    }
-
-    var enabledGraphsCount: Int {
-        [showCpuGraph, showMemoryGraph, showGpuGraph, showNetworkGraph, showDiskGraph].filter { $0 }.count
-    }
-
-    private var formattedUpdateInterval: String {
-        let seconds = Int(statsUpdateInterval.rounded())
-        if seconds >= 60 {
-            return "60 s (1 min)"
-        } else if seconds == 1 {
-            return "1 s"
-        } else {
-            return "\(seconds) s"
-        }
-    }
-
-    private var shouldShowStatsBatteryWarning: Bool {
-        !statsStopWhenNotchCloses && statsUpdateInterval <= 5
-    }
-
-    var body: some View {
-        Form {
-            Section {
-                Defaults.Toggle(key: .enableStatsFeature) {
-                    Text("Enable system stats monitoring")
-                }
-                .settingsHighlight(id: highlightID("Enable system stats monitoring"))
-                .onChange(of: enableStatsFeature) { _, newValue in
-                    if !newValue {
-                        statsManager.stopMonitoring()
-                    }
-                    // Note: Smart monitoring will handle starting when switching to stats tab
-                }
-
-                Defaults.Toggle(key: .enableLLMUsageFeature) {
-                    Text("Enable LLM Usage Monitor")
-                }
-                .settingsHighlight(id: highlightID("Enable LLM Usage Monitor"))
-
-            } header: {
-                Text("General")
-            } footer: {
-                Text("When enabled, the Stats tab will display real-time system performance graphs. This feature requires system permissions and may use additional battery. Enabling LLM Usage Monitor adds a Usage tab that tracks token usage and spend across your configured AI providers.")
-                    .multilineTextAlignment(.trailing)
-                    .foregroundStyle(.secondary)
-                    .font(.caption)
-            }
-
-            if enableLLMUsageFeature {
-                Section {
-                    Defaults.Toggle(key: .enableClaudeProvider) {
-                        Text("Claude")
-                    }
-                    .settingsHighlight(id: highlightID("Claude Provider"))
-
-                    Defaults.Toggle(key: .enableCodexProvider) {
-                        Text("Codex")
-                    }
-                    .settingsHighlight(id: highlightID("Codex Provider"))
-
-                    Defaults.Toggle(key: .enableCursorProvider) {
-                        Text("Cursor")
-                    }
-                    .settingsHighlight(id: highlightID("Cursor Provider"))
-
-                    Defaults.Toggle(key: .enableAntigravityProvider) {
-                        Text("Antigravity")
-                    }
-                    .settingsHighlight(id: highlightID("Antigravity Provider"))
-
-                    Defaults.Toggle(key: .enableNewAPIProvider) {
-                        Text("New API")
-                    }
-                    .settingsHighlight(id: highlightID("New API Provider"))
-                    .onChange(of: enableNewAPIProvider) { _, _ in
-                        LLMUsageManager.shared.refreshAll(force: true)
-                    }
-                } header: {
-                    Text("LLM Providers")
-                } footer: {
-                    Text("Choose which AI providers appear in the Usage tab.")
-                        .multilineTextAlignment(.trailing)
-                        .foregroundStyle(.secondary)
-                    .font(.caption)
-                }
-
-                Section {
-                    if newAPIAccounts.isEmpty {
-                        Text("Add one or more New API accounts to monitor their balance and usage.")
-                            .foregroundStyle(.secondary)
-                            .font(.caption)
-                    } else {
-                        ForEach(newAPIAccounts) { account in
-                            HStack(spacing: 10) {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(account.name)
-                                    Text(account.baseURL)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                        .lineLimit(1)
-                                        .truncationMode(.middle)
-                                }
-
-                                Spacer()
-
-                                Button {
-                                    editingNewAPIAccount = account
-                                    isNewAPIEditorPresented = true
-                                } label: {
-                                    Image(systemName: "pencil")
-                                }
-                                .buttonStyle(.borderless)
-                                .help("Edit New API account")
-
-                                Button(role: .destructive) {
-                                    accountPendingDeletion = account
-                                } label: {
-                                    Image(systemName: "trash")
-                                }
-                                .buttonStyle(.borderless)
-                                .help("Delete New API account")
-                            }
-                        }
-                    }
-
-                    Button {
-                        editingNewAPIAccount = nil
-                        isNewAPIEditorPresented = true
-                    } label: {
-                        Label("Add New API Account", systemImage: "plus")
-                    }
-                    .buttonStyle(.bordered)
-                    .settingsHighlight(id: highlightID("New API Accounts"))
-                } header: {
-                    Text("New API Accounts")
-                } footer: {
-                    Text("API keys are stored in the macOS Keychain. Balance and usage are shown in the quota units reported by your New API server.")
-                        .multilineTextAlignment(.trailing)
-                        .foregroundStyle(.secondary)
-                        .font(.caption)
-                }
-            }
-
-            if enableStatsFeature {
-                Section {
-                    Defaults.Toggle(key: .statsStopWhenNotchCloses) {
-                        Text("Stop monitoring after closing the notch")
-                    }
-                    .settingsHighlight(id: highlightID("Stop monitoring after closing the notch"))
-                    .help("When enabled, stats monitoring stops a few seconds after the notch closes.")
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Update interval")
-                            Spacer()
-                            Text(formattedUpdateInterval)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        Slider(value: $statsUpdateInterval, in: 1...60, step: 1)
-                            .accessibilityLabel("Stats update interval")
-
-                        Text("Controls how often system metrics refresh while monitoring is active.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    if shouldShowStatsBatteryWarning {
-                        Label {
-                            Text("High-frequency updates without a timeout can increase battery usage.")
-                        } icon: {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                        }
-                        .font(.caption)
-                        .foregroundStyle(.orange)
-                        .padding(.top, 4)
-                    }
-                } header: {
-                    Text("Monitoring Behavior")
-                } footer: {
-                    Text("Sampling can continue while the notch is closed when the timeout is disabled.")
-                        .multilineTextAlignment(.trailing)
-                        .foregroundStyle(.secondary)
-                        .font(.caption)
-                }
-
-                Section {
-                    Defaults.Toggle(key: .showCpuGraph) {
-                        Text("CPU Usage")
-                    }
-                    .settingsHighlight(id: highlightID("CPU Usage"))
-
-                    if showCpuGraph {
-                        Picker("Temperature unit", selection: $cpuTemperatureUnit) {
-                            ForEach(LockScreenWeatherTemperatureUnit.allCases) { unit in
-                                Text(unit.localizedName).tag(unit)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                        .settingsHighlight(id: highlightID("Temperature unit"))
-                    }
-                    Defaults.Toggle(key: .showMemoryGraph) {
-                        Text("Memory Usage")
-                    }
-                    .settingsHighlight(id: highlightID("Memory Usage"))
-                    Defaults.Toggle(key: .showGpuGraph) {
-                        Text("GPU Usage")
-                    }
-                    .settingsHighlight(id: highlightID("GPU Usage"))
-                    Defaults.Toggle(key: .showNetworkGraph) {
-                        Text("Network Activity")
-                    }
-                    .settingsHighlight(id: highlightID("Network Activity"))
-                    Defaults.Toggle(key: .showDiskGraph) {
-                        Text("Disk I/O")
-                    }
-                    .settingsHighlight(id: highlightID("Disk I/O"))
-                } header: {
-                    Text("Graph Visibility")
-                } footer: {
-                    if enabledGraphsCount >= 4 {
-                        Text("With \(enabledGraphsCount) graphs enabled, the Dynamic Island will expand horizontally to accommodate all graphs in a single row.")
-                            .multilineTextAlignment(.trailing)
-                            .foregroundStyle(.secondary)
-                            .font(.caption)
-                    } else {
-                        Text("Each graph can be individually enabled or disabled. Network activity shows download/upload speeds, and disk I/O shows read/write speeds.")
-                            .multilineTextAlignment(.trailing)
-                            .foregroundStyle(.secondary)
-                            .font(.caption)
-                    }
-                }
-
-                Section {
-                    HStack {
-                        Text("Monitoring Status")
-                        Spacer()
-                        HStack(spacing: 4) {
-                            Circle()
-                                .fill(statsManager.isMonitoring ? .green : .red)
-                                .frame(width: 8, height: 8)
-                            Text(statsManager.isMonitoring ? "Active" : "Stopped")
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-
-                    if statsManager.isMonitoring {
-                        if showCpuGraph {
-                            HStack {
-                                Text("CPU Usage")
-                                Spacer()
-                                Text(statsManager.cpuUsageString)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-
-                        if showMemoryGraph {
-                            HStack {
-                                Text("Memory Usage")
-                                Spacer()
-                                Text(statsManager.memoryUsageString)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-
-                        if showGpuGraph {
-                            HStack {
-                                Text("GPU Usage")
-                                Spacer()
-                                Text(statsManager.gpuUsageString)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-
-                        if showNetworkGraph {
-                            HStack {
-                                Text("Network Download")
-                                Spacer()
-                                Text(String(format: "%.1f MB/s", statsManager.networkDownload))
-                                    .foregroundStyle(.secondary)
-                            }
-
-                            HStack {
-                                Text("Network Upload")
-                                Spacer()
-                                Text(String(format: "%.1f MB/s", statsManager.networkUpload))
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-
-                        if showDiskGraph {
-                            HStack {
-                                Text("Disk Read")
-                                Spacer()
-                                Text(String(format: "%.1f MB/s", statsManager.diskRead))
-                                    .foregroundStyle(.secondary)
-                            }
-
-                            HStack {
-                                Text("Disk Write")
-                                Spacer()
-                                Text(String(format: "%.1f MB/s", statsManager.diskWrite))
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-
-                        HStack {
-                            Text("Last Updated")
-                            Spacer()
-                            Text(statsManager.lastUpdated, style: .relative)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                } header: {
-                    Text("Live Performance Data")
-                }
-
-                Section {
-                    HStack {
-                        Button(statsManager.isMonitoring ? "Stop Monitoring" : "Start Monitoring") {
-                            if statsManager.isMonitoring {
-                                statsManager.stopMonitoring()
-                            } else {
-                                statsManager.startMonitoring()
-                            }
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .foregroundColor(statsManager.isMonitoring ? .red : .blue)
-
-                        Spacer()
-
-                        Button("Clear Data") {
-                            statsManager.clearHistory()
-                        }
-                        .buttonStyle(.bordered)
-                        .disabled(statsManager.isMonitoring)
-                    }
-                } header: {
-                    Text("Controls")
-                }
-            }
-        }
-        .navigationTitle("Stats")
-        .onAppear {
-            newAPIAccounts = Defaults[.newAPIAccounts]
-        }
-        .sheet(isPresented: $isNewAPIEditorPresented) {
-            NewAPIAccountEditor(account: editingNewAPIAccount) { account, apiKey in
-                try NewAPIAccountStore.upsert(account, apiKey: apiKey)
-                newAPIAccounts = Defaults[.newAPIAccounts]
-                LLMUsageManager.shared.refreshAll(force: true)
-                isNewAPIEditorPresented = false
-            }
-        }
-        .confirmationDialog(
-            "Delete New API account?",
-            isPresented: Binding(
-                get: { accountPendingDeletion != nil },
-                set: { if !$0 { accountPendingDeletion = nil } }
-            ),
-            presenting: accountPendingDeletion
-        ) { account in
-            Button("Delete \(account.name)", role: .destructive) {
-                do {
-                    try NewAPIAccountStore.delete(account)
-                    newAPIAccounts = Defaults[.newAPIAccounts]
-                    LLMUsageManager.shared.refreshAll(force: true)
-                    accountPendingDeletion = nil
-                } catch {
-                    newAPIAccountErrorMessage = "Failed to delete \(account.name): \(error.localizedDescription)"
-                }
-            }
-            Button("Cancel", role: .cancel) {
-                accountPendingDeletion = nil
-            }
-        } message: { account in
-            Text("This removes \(account.name) and its stored API key from Atoll.")
-        }
-        .alert("New API Account Error", isPresented: Binding(
-            get: { newAPIAccountErrorMessage != nil },
-            set: { if !$0 { newAPIAccountErrorMessage = nil } }
-        )) {
-            Button("OK", role: .cancel) { newAPIAccountErrorMessage = nil }
-        } message: {
-            Text(newAPIAccountErrorMessage ?? "An unknown error occurred.")
-        }
-    }
-}
-
-private struct NewAPIAccountEditor: View {
-    let account: NewAPIAccount?
-    let onSave: (NewAPIAccount, String) throws -> Void
-
-    @Environment(\.dismiss) private var dismiss
-    @State private var name: String
-    @State private var baseURL: String
-    @State private var apiKey: String
-    @State private var errorMessage: String?
-
-    init(account: NewAPIAccount?, onSave: @escaping (NewAPIAccount, String) throws -> Void) {
-        self.account = account
-        self.onSave = onSave
-        _name = State(initialValue: account?.name ?? "")
-        _baseURL = State(initialValue: account?.baseURL ?? "https://")
-        _apiKey = State(initialValue: account.map { NewAPIKeychain.read(accountID: $0.id) ?? "" } ?? "")
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text(account == nil ? "Add New API Account" : "Edit New API Account")
-                .font(.title3.weight(.semibold))
-
-            Form {
-                TextField("Account name", text: $name)
-                TextField("Base URL", text: $baseURL)
-                    .textContentType(.URL)
-                SecureField("API key", text: $apiKey)
-                    .textContentType(.password)
-            }
-            .formStyle(.grouped)
-            .frame(width: 420)
-
-            if let errorMessage {
-                Text(errorMessage)
-                    .font(.caption)
-                    .foregroundStyle(.red)
-            }
-
-            HStack {
-                Spacer()
-                Button("Cancel") {
-                    dismiss()
-                }
-                .keyboardShortcut(.cancelAction)
-
-                Button("Save") {
-                    save()
-                }
-                .buttonStyle(.borderedProminent)
-                .keyboardShortcut(.defaultAction)
-            }
-        }
-        .padding(20)
-        .frame(width: 470)
-    }
-
-    private func save() {
-        let updated = NewAPIAccount(
-            id: account?.id ?? UUID(),
-            name: name,
-            baseURL: baseURL
-        )
-        do {
-            try onSave(updated, apiKey)
-            dismiss()
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-}
-
-struct ScreenAssistantSettings: View {
-    @ObservedObject var screenAssistantManager = ScreenAssistantManager.shared
-    @Default(.enableScreenAssistant) var enableScreenAssistant
-    @Default(.screenAssistantDisplayMode) var screenAssistantDisplayMode
-    @Default(.geminiApiKey) var geminiApiKey
-    @State private var apiKeyText = ""
-    @State private var showingApiKey = false
-
-    private func highlightID(_ title: String) -> String {
-        SettingsTab.screenAssistant.highlightID(for: title)
-    }
-
-    var body: some View {
-        Form {
-            Section {
-                Defaults.Toggle(key: .enableScreenAssistant) {
-                    Text("Enable Screen Assistant")
-                }
-                .settingsHighlight(id: highlightID("Enable Screen Assistant"))
-            } header: {
-                Text("AI Assistant")
-            } footer: {
-                Text("AI-powered assistant that can analyze files, images, and provide conversational help. Use Cmd+Shift+A to quickly access the assistant.")
-            }
-
-            if enableScreenAssistant {
-                Section {
-                    HStack {
-                        Text("Gemini API Key")
-                        Spacer()
-                        if geminiApiKey.isEmpty {
-                            Text("Not Set")
-                                .foregroundColor(.red)
-                        } else {
-                            Text("••••••••")
-                                .foregroundColor(.green)
-                        }
-
-                        Button(showingApiKey ? "Hide" : (geminiApiKey.isEmpty ? "Set" : "Change")) {
-                            if showingApiKey {
-                                showingApiKey = false
-                                if !apiKeyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                    Defaults[.geminiApiKey] = apiKeyText
-                                }
-                                apiKeyText = ""
-                            } else {
-                                showingApiKey = true
-                                apiKeyText = geminiApiKey
-                            }
-                        }
-                    }
-
-                    if showingApiKey {
-                        VStack(alignment: .leading, spacing: 8) {
-                            SecureField("Enter your Gemini API Key", text: $apiKeyText)
-                                .textFieldStyle(.roundedBorder)
-
-                            Text("Get your free API key from Google AI Studio")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-
-                            HStack {
-                                Button("Open Google AI Studio") {
-                                    NSWorkspace.shared.open(URL(string: "https://aistudio.google.com/app/apikey")!)
-                                }
-                                .buttonStyle(.link)
-
-                                Spacer()
-
-                                Button("Save") {
-                                    Defaults[.geminiApiKey] = apiKeyText
-                                    showingApiKey = false
-                                    apiKeyText = ""
-                                }
-                                .disabled(apiKeyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                            }
-                        }
-                    }
-
-                    HStack {
-                        Text("Display Mode")
-                        Spacer()
-                        Picker("", selection: $screenAssistantDisplayMode) {
-                            ForEach(ScreenAssistantDisplayMode.allCases, id: \.self) { mode in
-                                Text(mode.displayName).tag(mode)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .frame(minWidth: 100)
-                    }
-                    .settingsHighlight(id: highlightID("Display Mode"))
-
-                    HStack {
-                        Text("Attached Files")
-                        Spacer()
-                        Text("\(screenAssistantManager.attachedFiles.count)")
-                            .foregroundColor(.secondary)
-                    }
-
-                    HStack {
-                        Text("Recording Status")
-                        Spacer()
-                        Text(screenAssistantManager.isRecording ? "Recording" : "Ready")
-                            .foregroundColor(screenAssistantManager.isRecording ? .red : .secondary)
-                    }
-                } header: {
-                    Text("Configuration")
-                } footer: {
-                    switch screenAssistantDisplayMode {
-                    case .popover:
-                        Text("Popover mode shows the assistant as a dropdown attached to the AI button. Panel mode shows the assistant in a floating window near the notch.")
-                    case .panel:
-                        Text("Panel mode shows the assistant in a floating window near the notch. Popover mode shows the assistant as a dropdown attached to the AI button.")
-                    }
-                }
-
-                Section {
-                    Button("Clear All Files") {
-                        screenAssistantManager.clearAllFiles()
-                    }
-                    .foregroundColor(.red)
-                    .disabled(screenAssistantManager.attachedFiles.isEmpty)
-                } header: {
-                    Text("Actions")
-                } footer: {
-                    Text("Clear all files removes all attached files and audio recordings. This action is permanent.")
-                }
-
-                if !screenAssistantManager.attachedFiles.isEmpty {
-                    Section {
-                        ForEach(screenAssistantManager.attachedFiles) { file in
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack {
-                                    Image(systemName: file.type.iconName)
-                                        .foregroundColor(.blue)
-                                        .frame(width: 16)
-                                    Text(file.type.displayName)
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                    Spacer()
-                                    Text(timeAgoString(from: file.timestamp))
-                                        .font(.caption2)
-                                        .foregroundColor(.secondary)
-                                }
-                                Text(file.name)
-                                    .font(.system(.body, design: .monospaced))
-                                    .lineLimit(2)
-                            }
-                            .padding(.vertical, 2)
-                        }
-                    } header: {
-                        Text("Attached Files")
-                    }
-                }
-            }
-        }
-        .formStyle(.grouped)
-        .navigationTitle("Screen Assistant")
-    }
-
-    private func timeAgoString(from date: Date) -> String {
-        let interval = Date().timeIntervalSince(date)
-
-        if interval < 60 {
-            return "Just now"
-        } else if interval < 3600 {
-            let minutes = Int(interval / 60)
-            return "\(minutes)m ago"
-        } else if interval < 86400 {
-            let hours = Int(interval / 3600)
-            return "\(hours)h ago"
-        } else {
-            let days = Int(interval / 86400)
-            return "\(days)d ago"
-        }
-    }
-}
-
-struct ColorPickerSettings: View {
-    @ObservedObject var colorPickerManager = ColorPickerManager.shared
-    @Default(.enableColorPickerFeature) var enableColorPickerFeature
-    @Default(.showColorFormats) var showColorFormats
-    @Default(.colorPickerDisplayMode) var colorPickerDisplayMode
-    @Default(.colorHistorySize) var colorHistorySize
-    @Default(.showColorPickerIcon) var showColorPickerIcon
-
-    private func highlightID(_ title: String) -> String {
-        SettingsTab.colorPicker.highlightID(for: title)
-    }
-
-    var body: some View {
-        Form {
-            Section {
-                Defaults.Toggle(key: .enableColorPickerFeature) {
-                    Text("Enable Color Picker")
-                }
-                .settingsHighlight(id: highlightID("Enable Color Picker"))
-            } header: {
-                Text("Color Picker")
-            } footer: {
-                Text("Enable screen color picking functionality. Use Cmd+Shift+P to quickly access the color picker.")
-            }
-
-            if enableColorPickerFeature {
-                Section {
-                    Defaults.Toggle(key: .showColorPickerIcon) {
-                        Text("Show Color Picker Icon")
-                    }
-                    .settingsHighlight(id: highlightID("Show Color Picker Icon"))
-
-                    HStack {
-                        Text("Display Mode")
-                        Spacer()
-                        Picker("", selection: $colorPickerDisplayMode) {
-                            ForEach(ColorPickerDisplayMode.allCases, id: \.self) { mode in
-                                Text(mode.displayName).tag(mode)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .frame(minWidth: 100)
-                    }
-                    .settingsHighlight(id: highlightID("Display Mode"))
-
-                    HStack {
-                        Text("History Size")
-                        Spacer()
-                        Picker("", selection: $colorHistorySize) {
-                            Text("5 colors").tag(5)
-                            Text("10 colors").tag(10)
-                            Text("15 colors").tag(15)
-                            Text("20 colors").tag(20)
-                        }
-                        .pickerStyle(.menu)
-                        .frame(minWidth: 100)
-                    }
-                    .settingsHighlight(id: highlightID("History Size"))
-
-                    Defaults.Toggle(key: .showColorFormats) {
-                        Text("Show All Color Formats")
-                    }
-                    .settingsHighlight(id: highlightID("Show All Color Formats"))
-
-                } header: {
-                    Text("Settings")
-                } footer: {
-                    switch colorPickerDisplayMode {
-                    case .popover:
-                        Text("Popover mode shows color picker as a dropdown attached to the color picker button. Panel mode shows color picker in a floating window.")
-                    case .panel:
-                        Text("Panel mode shows color picker in a floating window. Popover mode shows color picker as a dropdown attached to the color picker button.")
-                    }
-                }
-
-                Section {
-                    HStack {
-                        Text("Color History")
-                        Spacer()
-                        Text("\(colorPickerManager.colorHistory.count)")
-                            .foregroundColor(.secondary)
-                    }
-
-                    HStack {
-                        Text("Picking Status")
-                        Spacer()
-                        Text(colorPickerManager.isPickingColor ? "Active" : "Ready")
-                            .foregroundColor(colorPickerManager.isPickingColor ? .green : .secondary)
-                    }
-
-                    Button("Show Color Picker Panel") {
-                        ColorPickerPanelManager.shared.showColorPickerPanel()
-                    }
-                    .disabled(!enableColorPickerFeature)
-
-                } header: {
-                    Text("Status & Actions")
-                }
-
-                Section {
-                    Button("Clear Color History") {
-                        colorPickerManager.clearHistory()
-                    }
-                    .foregroundColor(.red)
-                    .disabled(colorPickerManager.colorHistory.isEmpty)
-
-                    Button("Start Color Picking") {
-                        colorPickerManager.startColorPicking()
-                    }
-                    .disabled(!enableColorPickerFeature || colorPickerManager.isPickingColor)
-
-                } header: {
-                    Text("Quick Actions")
-                } footer: {
-                    Text("Clear color history removes all picked colors. Start color picking begins screen color capture mode.")
-                }
-            }
-        }
-        .navigationTitle("Color Picker")
-    }
-}
-
 struct CustomOSDSettings: View {
     @Default(.enableCustomOSD) var enableCustomOSD
     @Default(.hasSeenOSDAlphaWarning) var hasSeenOSDAlphaWarning
@@ -8725,103 +6996,6 @@ struct SettingsPermissionCallout: View {
     HUD()
 }
 
-struct NotesSettingsView: View {
-    @EnvironmentObject var vm: DynamicIslandViewModel
-    @ObservedObject var coordinator = DynamicIslandViewCoordinator.shared
-    @ObservedObject private var appleNotesSync = AppleNotesSyncManager.shared
-    @Default(.enableNotes) private var enableNotes
-    @Default(.enableAppleNotesSync) private var enableAppleNotesSync
-    @Default(.appleNotesLastSyncDate) private var appleNotesLastSyncDate
-
-    private func highlightID(_ title: String) -> String {
-        SettingsTab.notes.highlightID(for: title)
-    }
-
-    var body: some View {
-        Form {
-            Section {
-                Defaults.Toggle(key: .enableNotes) {
-                    Text("Enable Notes")
-                }
-                if enableNotes {
-                    Defaults.Toggle(key: .enableNotePinning) {
-                        Text("Enable Note Pinning")
-                    }
-                    Defaults.Toggle(key: .enableNoteSearch) {
-                        Text("Enable Note Search")
-                    }
-                    Defaults.Toggle(key: .enableNoteColorFiltering) {
-                        Text("Enable Color Filtering")
-                    }
-                    Defaults.Toggle(key: .enableCreateFromClipboard) {
-                        Text("Enable Create from Clipboard")
-                    }
-                    Defaults.Toggle(key: .enableNoteCharCount) {
-                        Text("Show Character Count")
-                    }
-                }
-            } header: {
-                Text("General")
-            } footer: {
-                Text("Customize how you organize and create notes. Enabling color filtering and search helps manage large lists.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            if enableNotes {
-                Section {
-                    Defaults.Toggle(key: .enableAppleNotesSync) {
-                        Text("Sync with Apple Notes")
-                    }
-                    .settingsHighlight(id: highlightID("Sync with Apple Notes"))
-
-                    if enableAppleNotesSync {
-                        Button {
-                            Task {
-                                let notes = Defaults[.savedNotes]
-                                if let merged = await appleNotesSync.sync(localNotes: notes) {
-                                    Defaults[.savedNotes] = merged
-                                }
-                            }
-                        } label: {
-                            HStack {
-                                Text("Sync Now")
-                                Spacer()
-                                if appleNotesSync.isSyncing {
-                                    ProgressView()
-                                        .controlSize(.small)
-                                }
-                            }
-                        }
-                        .disabled(appleNotesSync.isSyncing)
-                        .settingsHighlight(id: highlightID("Sync Now"))
-
-                        if let lastSync = appleNotesLastSyncDate {
-                            LabeledContent("Last synced") {
-                                Text(lastSync, style: .relative)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-
-                        if let error = appleNotesSync.lastError {
-                            Text(error)
-                                .font(.caption)
-                                .foregroundStyle(.red)
-                        }
-                    }
-                } header: {
-                    Text("Apple Notes")
-                } footer: {
-                    Text("Two-way sync with the macOS Notes app. Notes created in Atoll appear in the Atoll folder in Notes, and your existing Apple Notes are imported into the notch. Grant Automation permission for Notes when prompted.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-        .navigationTitle("Notes")
-    }
-}
-
 // MARK: - Reusable App Icon View
 
 /// Fetches the real app icon from the system using bundle identifiers,
@@ -8868,56 +7042,3 @@ struct AppIconImage: View {
     }
 }
 
-private struct QuickShareProviderIconImage: View {
-    let provider: QuickShareProvider
-    var size: CGFloat = 16
-
-    var body: some View {
-        Group {
-            if let imgData = provider.imageData, let nsImg = NSImage(data: imgData) {
-                Image(nsImage: nsImg.fitted(toSide: size))
-                    .clipShape(RoundedRectangle(cornerRadius: size * 0.2))
-            } else {
-                AppIconImage(
-                    bundleIdentifiers: provider.bundleIdentifiersFallback,
-                    assetFallback: provider.assetFallbackName,
-                    symbolFallback: provider.symbolFallbackName,
-                    symbolColor: .accentColor,
-                    size: size
-                )
-            }
-        }
-        .frame(width: size, height: size)
-    }
-}
-
-private extension QuickShareProvider {
-    var bundleIdentifiersFallback: [String] {
-        switch id {
-        case "LocalSend":
-            return ["org.localsend.localsend_app", "org.localsend.localsend"]
-        case "AirDrop":
-            return ["com.apple.finder"]
-        case "Mail":
-            return ["com.apple.mail"]
-        case "Messages":
-            return ["com.apple.MobileSMS", "com.apple.iChat"]
-        case "Notes":
-            return ["com.apple.Notes"]
-        case "Reminders":
-            return ["com.apple.reminders"]
-        case "Add to Safari Reading List":
-            return ["com.apple.Safari"]
-        default:
-            return []
-        }
-    }
-
-    var assetFallbackName: String? {
-        id == "LocalSend" ? "LocalSend" : nil
-    }
-
-    var symbolFallbackName: String {
-        id == "System Share Menu" ? "square.and.arrow.up.on.square" : "square.and.arrow.up"
-    }
-}

@@ -20,7 +20,6 @@ import AVFoundation
 import Combine
 import Defaults
 import KeyboardShortcuts
-import Sparkle
 import SwiftUI
 import SkyLightWindow
 
@@ -30,29 +29,11 @@ struct DynamicNotchApp: App {
     @Default(.menubarIcon) var showMenuBarIcon
     @Environment(\.openWindow) var openWindow
 
-    let updaterController: SPUStandardUpdaterController
-    /// Retained delegate instance that dynamically selects the Sparkle feed URL
-    /// based on the user's update channel preference.
-    private let updaterDelegate = AtollUpdaterDelegate()
-
-    init() {
-        // Skip Sparkle's launch-time update check during UI testing.
-        // The AtollUpdaterDelegate overrides the feed URL at runtime
-        // based on the user's selected update channel.
-        updaterController = SPUStandardUpdaterController(
-            startingUpdater: !AppRuntimeEnvironment.isUITesting,
-            updaterDelegate: updaterDelegate, userDriverDelegate: nil)
-
-        // Initialize the settings window controller with the updater controller
-        SettingsWindowController.shared.setUpdaterController(updaterController)
-    }
-
     var body: some Scene {
         MenuBarExtra("dynamic.island", systemImage: "mountain.2.fill", isInserted: $showMenuBarIcon) {
             Button("Settings") {
                 SettingsWindowController.shared.showWindow()
             }
-            CheckForUpdatesView(updater: updaterController.updater)
             Divider()
             Button("Restart Atoll") {
                 guard let bundleIdentifier = Bundle.main.bundleIdentifier else { return }
@@ -109,16 +90,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var whatsNewWindow: NSWindow?
     var timer: Timer?
     let calendarManager = CalendarManager.shared
-    let webcamManager = WebcamManager.shared
     let dndManager = DoNotDisturbManager.shared  // NEW: DND detection
     let bluetoothAudioManager = BluetoothAudioManager.shared  // NEW: Bluetooth audio detection
-    let idleAnimationManager = IdleAnimationManager.shared  // NEW: Custom idle animations
-    let downloadManager = DownloadManager.shared  // NEW: browser downloads detection
-    let lockScreenPanelManager = LockScreenPanelManager.shared  // NEW: Lock screen music panel
     let mediaControlsStateCoordinator = MediaControlsStateCoordinator.shared
     let systemTimerBridge = SystemTimerBridge.shared
-    let extensionXPCServiceHost = ExtensionXPCServiceHost.shared
-    let extensionRPCServer = ExtensionRPCServer.shared
     var closeNotchWorkItem: DispatchWorkItem?
     private var previousScreens: [NSScreen]?
     private var onboardingWindowController: NSWindowController?
@@ -130,11 +105,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     // Debouncing mechanism for window size updates
     private var windowSizeUpdateWorkItem: DispatchWorkItem?
-
-    // Block-based AudioTap observers, kept with their center so they can be removed by token
-    private var audioTapObserverTokens: [(center: NotificationCenter, token: NSObjectProtocol)] = []
 //    let calendarManager = CalendarManager.shared
-//    let webcamManager = WebcamManager.shared
 //    var closeNotchWorkItem: DispatchWorkItem?
 //    private var previousScreens: [NSScreen]?
 //    private var onboardingWindowController: NSWindowController?
@@ -165,118 +136,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         installTopMenuItemsIfNeeded()
     }
 
-    func application(_ application: NSApplication, open urls: [URL]) {
-        _ = handleIncomingShelfURLs(urls)
-    }
-
-    func application(_ sender: NSApplication, openFile filename: String) -> Bool {
-        handleIncomingShelfURLs([URL(fileURLWithPath: filename)])
-    }
-
-    private func handleIncomingShelfURLs(_ urls: [URL]) -> Bool {
-        let fileURLs = urls.filter(\.isFileURL)
-        guard !fileURLs.isEmpty else { return false }
-
-        Task { @MainActor [weak self] in
-            let items = await ShelfDropService.items(from: fileURLs)
-            guard !items.isEmpty else { return }
-
-            ShelfStateViewModel.shared.add(items)
-            self?.coordinator.currentView = .shelf
-        }
-
-        return true
-    }
-    
-    /// Setup observers for music player state changes to restart AudioTap capture
-    private func setupAudioTapMusicObservers() {
-        // Registration is additive and this runs again every time the waveform setting is
-        // switched back on, so drop the previous generation instead of stacking duplicates.
-        // Block-based observers are only removable through the token they return, which is
-        // why they are retained in `audioTapObserverTokens`.
-        tearDownAudioTapMusicObservers()
-
-        // Listen for app launches to restart capture when music apps are opened
-        let targetBundleIDs = [
-            "com.apple.Music",
-            "com.spotify.client",
-            "com.amazon.music",
-            "sh.cider.genten.mac",
-            "com.apple.Safari",
-            "com.tidal.desktop",
-            "tv.plex.plexamp",
-            "com.roon.Roon",
-            "com.audirvana.Audirvana-Studio",
-            "com.vox.vox",
-            "com.coppertino.Vox",
-        ]
-        
-        let launchToken = NSWorkspace.shared.notificationCenter.addObserver(
-            forName: NSWorkspace.didLaunchApplicationNotification,
-            object: nil,
-            queue: .main
-        ) { notification in
-            guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
-                  let bundleID = app.bundleIdentifier,
-                  targetBundleIDs.contains(bundleID) else { return }
-            
-            // A target music app was launched, restart capture to include it
-            if Defaults[.enableRealTimeWaveform] {
-                print("🎵 [AudioTap] Music app launched: \(bundleID), restarting capture...")
-                // Give the app a moment to fully launch
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                    AudioTap.shared.restartCapture()
-                }
-            }
-        }
-        
-        // Also observe app terminations to restart capture
-        let terminateToken = NSWorkspace.shared.notificationCenter.addObserver(
-            forName: NSWorkspace.didTerminateApplicationNotification,
-            object: nil,
-            queue: .main
-        ) { notification in
-            guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
-                  let bundleID = app.bundleIdentifier,
-                  targetBundleIDs.contains(bundleID) else { return }
-            
-            // A target music app was terminated, restart capture to update the list
-            if Defaults[.enableRealTimeWaveform] {
-                print("🎵 [AudioTap] Music app terminated: \(bundleID), restarting capture...")
-                AudioTap.shared.restartCapture()
-            }
-        }
-
-        // Restart capture when the audio output route changes (e.g. AirPods connect/
-        // disconnect). AudioTap skips Spotify while a Bluetooth route is active to keep the
-        // AirPods pause gesture working, so the tap must be rebuilt to re-include or exclude
-        // Spotify whenever the route flips.
-        let routeToken = NotificationCenter.default.addObserver(
-            forName: .systemAudioRouteDidChange,
-            object: nil,
-            queue: .main
-        ) { _ in
-            if Defaults[.enableRealTimeWaveform] {
-                print("🔀 [AudioTap] Audio route changed, restarting capture...")
-                AudioTap.shared.restartCapture()
-            }
-        }
-
-        audioTapObserverTokens = [
-            (NSWorkspace.shared.notificationCenter, launchToken),
-            (NSWorkspace.shared.notificationCenter, terminateToken),
-            (NotificationCenter.default, routeToken),
-        ]
-    }
-
-    /// Removes the AudioTap observers registered by `setupAudioTapMusicObservers()`.
-    private func tearDownAudioTapMusicObservers() {
-        for (center, token) in audioTapObserverTokens {
-            center.removeObserver(token)
-        }
-        audioTapObserverTokens.removeAll()
-    }
-
     func applicationWillTerminate(_ notification: Notification) {
         let userInfo: [String: Any] = [
             AtollDistributedNotifications.UserInfoKey.sourcePID: NSNumber(value: ProcessInfo.processInfo.processIdentifier)
@@ -297,14 +156,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Cancel any pending window size updates
         windowSizeUpdateWorkItem?.cancel()
         NotificationCenter.default.removeObserver(self)
-        extensionXPCServiceHost.stop()
-        extensionRPCServer.stop()
-        
-        // Stop AudioTap capture
-        AudioTap.shared.stopCapture()
-
-        // Restore Lunar's native OSD if integration was active
-        LunarManager.shared.appWillTerminate()
     }
     
     @objc func onScreenLocked(_: Notification) {
@@ -426,7 +277,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         window.contentView = FirstMouseHostingView(
             rootView: ContentView()
                 .environmentObject(viewModel)
-                .environmentObject(webcamManager)
                 //.moveToSky()
         )
         
@@ -444,7 +294,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         let screenFrame = screen.frame
         let topBleed = notchTopScreenBleed(for: screen.localizedName)
-        let centerX = screenFrame.origin.x + (screenFrame.width / 2)
+        // Center on the physical notch when the screen has one, otherwise on the screen.
+        let centerX: CGFloat
+        if let leftArea = screen.auxiliaryTopLeftArea?.width,
+           let rightArea = screen.auxiliaryTopRightArea?.width {
+            let physicalNotchWidth = screenFrame.width - leftArea - rightArea
+            centerX = screenFrame.origin.x + leftArea + (physicalNotchWidth / 2)
+        } else {
+            centerX = screenFrame.midX
+        }
         let roundedWidth = window.frame.width.rounded()
         let roundedHeight = window.frame.height.rounded()
         let newX = (centerX - (roundedWidth / 2)).rounded()
@@ -548,25 +406,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Use a consistent height for different view types
         if coordinator.currentView == .timer {
             baseSize.height = 250 // Extra space for timer presets
-        } else if coordinator.currentView == .notes {
-            let preferredHeight = coordinator.notesLayoutState.preferredHeight
-            baseSize.height = max(baseSize.height, preferredHeight)
-        } else if coordinator.currentView == .llmUsage {
-            baseSize.height = max(baseSize.height, llmUsageOpenNotchHeight)
         }
-        
+
         baseSize = inlineLyricsAdjustedNotchSize(
             from: baseSize,
             isHomeTabActive: coordinator.currentView == .home
         )
 
-        let adjustedContentSize = statsAdjustedNotchSize(
-            from: baseSize,
-            isStatsTabActive: coordinator.currentView == .stats,
-            secondRowProgress: coordinator.statsSecondRowExpansion
-        )
         let result = addShadowPadding(
-            to: adjustedContentSize,
+            to: baseSize,
             isMinimalistic: Defaults[.enableMinimalisticUI]
         )
 
@@ -680,11 +528,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             deliverImmediately: true
         )
 
-        LockScreenLiveActivityWindowManager.shared.configure(viewModel: vm)
         LockScreenManager.shared.configure(viewModel: vm)
-        extensionXPCServiceHost.start()
-        extensionRPCServer.start()
-        
+
         // Migrate legacy progress bar settings
         Defaults.Keys.migrateProgressBarStyle()
         Defaults.Keys.migrateMusicAuxControls()
@@ -704,9 +549,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 Defaults.Keys.syncLegacyThirdPartyDDCKeys()
             }
             .store(in: &cancellables)
-        
-        // Initialize idle animations (load bundled + built-in face)
-        idleAnimationManager.initializeDefaultAnimations()
 
         applySelectedAppIcon()
         installTopMenuItemsIfNeeded()
@@ -716,16 +558,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.updateFocusMenuState()
             }
             .store(in: &cancellables)
-        
-        // Setup SystemHUD Manager
-        SystemHUDManager.shared.setup(coordinator: coordinator)
 
-        // Setup BetterDisplay integration
-        BetterDisplayManager.shared.configure(coordinator: coordinator)
-
-        // Setup Lunar integration
-        LunarManager.shared.configure(coordinator: coordinator)
-        
         // Setup ScreenRecording Manager
         if Defaults[.enableScreenRecordingDetection] && !AppRuntimeEnvironment.isUITesting {
             ScreenRecordingManager.shared.startMonitoring()
@@ -740,30 +573,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if !AppRuntimeEnvironment.isUITesting {
             PrivacyIndicatorManager.shared.startMonitoring()
         }
-        
-        // Setup Real-time Audio Waveform capture if enabled
-        if Defaults[.enableRealTimeWaveform] {
-            Task {
-                await AudioTap.shared.startCapture()
-            }
-            setupAudioTapMusicObservers()
-        }
-        
-        // Observe enableRealTimeWaveform changes
-        Defaults.publisher(.enableRealTimeWaveform, options: [])
-            .sink { [weak self] change in
-                if change.newValue {
-                    Task {
-                        await AudioTap.shared.startCapture()
-                    }
-                    self?.setupAudioTapMusicObservers()
-                } else {
-                    AudioTap.shared.stopCapture()
-                    self?.tearDownAudioTapMusicObservers()
-                }
-            }
-            .store(in: &cancellables)
-        
+
         // Observe tab changes - use immediate resize to keep the notch pinned
         // Deferred to next run loop tick because @Published fires on willSet,
         // so coordinator.currentView still holds the OLD value at emission time.
@@ -773,43 +583,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }.store(in: &cancellables)
 
-        coordinator.$notesLayoutState
-            .removeDuplicates()
-            .sink { [weak self] _ in
-                self?.updateWindowSizeIfNeeded()
-            }
-            .store(in: &cancellables)
-        
-        // Observe stats settings changes - use debounced updates
-        Defaults.publisher(.enableStatsFeature, options: []).sink { [weak self] _ in
-            self?.debouncedUpdateWindowSize()
-        }.store(in: &cancellables)
-        
-        Defaults.publisher(.showCpuGraph, options: []).sink { [weak self] _ in
-            self?.debouncedUpdateWindowSize()
-        }.store(in: &cancellables)
-        
-        Defaults.publisher(.showMemoryGraph, options: []).sink { [weak self] _ in
-            self?.debouncedUpdateWindowSize()
-        }.store(in: &cancellables)
-        
-        Defaults.publisher(.showGpuGraph, options: []).sink { [weak self] _ in
-            self?.debouncedUpdateWindowSize()
-        }.store(in: &cancellables)
-        
-        Defaults.publisher(.showNetworkGraph, options: []).sink { [weak self] _ in
-            self?.debouncedUpdateWindowSize()
-        }.store(in: &cancellables)
-        
-        Defaults.publisher(.showDiskGraph, options: []).sink { [weak self] _ in
-            self?.debouncedUpdateWindowSize()
-        }.store(in: &cancellables)
-
         Defaults.publisher(.openNotchWidth, options: []).sink { [weak self] _ in
             self?.debouncedUpdateWindowSize()
         }.store(in: &cancellables)
-
-        MemoryUsageMonitor.shared.startMonitoring()
 
         ReminderLiveActivityManager.shared.$activeWindowReminders
             .receive(on: RunLoop.main)
@@ -835,18 +611,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }.store(in: &cancellables)
 
         Defaults.publisher(.enableTimerFeature, options: []).sink { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.updateFeatureShortcutAvailability()
-            }
-        }.store(in: &cancellables)
-
-        Defaults.publisher(.enableColorPickerFeature, options: []).sink { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.updateFeatureShortcutAvailability()
-            }
-        }.store(in: &cancellables)
-
-        Defaults.publisher(.enableScreenAssistant, options: []).sink { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.updateFeatureShortcutAvailability()
             }
@@ -1022,20 +786,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         
         previousScreens = NSScreen.screens
-
-        // Skip weather under UI testing: prepareLocationAccess prompts for Location.
-        if Defaults[.enableLockScreenWeatherWidget] && !AppRuntimeEnvironment.isUITesting {
-            LockScreenWeatherManager.shared.prepareLocationAccess()
-            Task { @MainActor in
-                await LockScreenWeatherManager.shared.refresh(force: true)
-            }
-        }
-
-        // Warm up the lock screen timer widget manager so it can observe timer/default
-        // changes immediately instead of waiting for the first lock event.
-        let timerWidgetManager = LockScreenTimerWidgetManager.shared
-        timerWidgetManager.handleLockStateChange(isLocked: LockScreenManager.shared.currentLockStatus)
-
     }
 
     private func installTopMenuItemsIfNeeded() {
@@ -1313,37 +1063,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             guard Defaults[.enableShortcuts], Defaults[.enableTimerFeature] else { return }
             TimerManager.shared.startDemoTimer(duration: 300)
         }
-
-        KeyboardShortcuts.onKeyDown(for: .colorPickerPanel) {
-            guard Defaults[.enableShortcuts], Defaults[.enableColorPickerFeature] else { return }
-            ColorPickerPanelManager.shared.toggleColorPickerPanel()
-        }
-
-        KeyboardShortcuts.onKeyDown(for: .screenAssistantPanel) { [weak self] in
-            guard let self else { return }
-            guard Defaults[.enableShortcuts], Defaults[.enableScreenAssistant] else { return }
-
-            switch Defaults[.screenAssistantDisplayMode] {
-            case .panel:
-                ScreenAssistantPanelManager.shared.toggleScreenAssistantPanel()
-            case .popover:
-                if vm.notchState == .closed {
-                    vm.open()
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        NotificationCenter.default.post(name: NSNotification.Name("ToggleScreenAssistantPopover"), object: nil)
-                    }
-                } else {
-                    NotificationCenter.default.post(name: NSNotification.Name("ToggleScreenAssistantPopover"), object: nil)
-                }
-            }
-        }
     }
 
     @MainActor
     private func updateFeatureShortcutAvailability() {
         updateShortcut(.startDemoTimer, isEnabled: Defaults[.enableShortcuts] && Defaults[.enableTimerFeature])
-        updateShortcut(.colorPickerPanel, isEnabled: Defaults[.enableShortcuts] && Defaults[.enableColorPickerFeature])
-        updateShortcut(.screenAssistantPanel, isEnabled: Defaults[.enableShortcuts] && Defaults[.enableScreenAssistant])
     }
 
     @MainActor

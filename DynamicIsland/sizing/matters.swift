@@ -24,7 +24,6 @@ import Defaults
 import Foundation
 import SwiftUI
 
-let downloadSneakSize: CGSize = .init(width: 65, height: 1)
 let batterySneakSize: CGSize = .init(width: 160, height: 1)
 
 /// Layout budgets applied to the home view only while the side lyrics panel is active
@@ -32,10 +31,7 @@ enum SideLyricsLayout {
     /// Room the standard player needs for its album art and five-button control row
     static let minimumPlayerWidth: CGFloat = 380
 
-    /// Room the webcam mirror needs to stay usable next to the player
-    static let minimumMirrorWidth: CGFloat = 220
-
-    /// Spacing between the player, mirror, and lyrics panel columns
+    /// Spacing between the player and lyrics panel columns
     static let hStackSpacing: CGFloat = 20
 
     /// Combined home-view and notch content insets surrounding those columns
@@ -52,9 +48,6 @@ func sideLyricsRequiredNotchWidth() -> CGFloat {
 
     let panelWidth = max(0, Defaults[.lyricsPanelWidth])
     let offsetDistance = abs(Defaults[.lyricsPanelOffset])
-    let mirrorWidth = Defaults[.showMirror] && WebcamManager.shared.cameraAvailable
-        ? SideLyricsLayout.minimumMirrorWidth + SideLyricsLayout.hStackSpacing
-        : 0
 
     // Include the home-view and notch content insets so the player receives
     // the same usable width it had before the panel was added.
@@ -62,7 +55,6 @@ func sideLyricsRequiredNotchWidth() -> CGFloat {
         + panelWidth
         + SideLyricsLayout.hStackSpacing
         + offsetDistance
-        + mirrorWidth
         + SideLyricsLayout.combinedInset
 }
 
@@ -102,27 +94,12 @@ func enabledStandardTabCount() -> Int {
     var count = 0
 
     // Home tab
-    if Defaults[.showStandardMediaControls] || Defaults[.showCalendar] || Defaults[.showMirror] {
-        count += 1
-    }
-
-    // Shelf tab
-    if Defaults[.dynamicShelf] {
+    if Defaults[.showStandardMediaControls] || Defaults[.showCalendar] {
         count += 1
     }
 
     // Timer tab (only in .tab display mode)
     if Defaults[.enableTimerFeature] && Defaults[.timerDisplayMode] == .tab {
-        count += 1
-    }
-
-    // Stats tab
-    if Defaults[.enableStatsFeature] {
-        count += 1
-    }
-
-    // Notes tab
-    if Defaults[.enableNotes] {
         count += 1
     }
 
@@ -160,10 +137,6 @@ private let minimalisticLyricsExtraHeight: CGFloat = 40
 let minimalisticTimerCountdownTopPadding: CGFloat = 12
 let minimalisticTimerCountdownContentHeight: CGFloat = 82
 let minimalisticTimerCountdownBlockHeight: CGFloat = minimalisticTimerCountdownTopPadding + minimalisticTimerCountdownContentHeight
-let statsSecondRowContentHeight: CGFloat = 120
-let statsGridSpacingHeight: CGFloat = 12
-let llmUsageOpenNotchHeight: CGFloat = 220
-let llmUsageProviderCardHeight: CGFloat = 188
 let notchShadowPaddingStandard: CGFloat = 18
 let notchShadowPaddingMinimalistic: CGFloat = 12
 
@@ -233,38 +206,6 @@ func inlineLyricsAdjustedNotchSize(
 
     var adjustedSize = baseSize
     adjustedSize.height += inlineLyricsLineHeight
-    return adjustedSize
-}
-
-func statsAdjustedNotchSize(
-    from baseSize: CGSize,
-    isStatsTabActive: Bool,
-    secondRowProgress: CGFloat
-) -> CGSize {
-    guard isStatsTabActive, Defaults[.enableStatsFeature] else {
-        return baseSize
-    }
-
-    let enabledGraphsCount = [
-        Defaults[.showCpuGraph],
-        Defaults[.showMemoryGraph],
-        Defaults[.showGpuGraph],
-        Defaults[.showNetworkGraph],
-        Defaults[.showDiskGraph]
-    ].filter { $0 }.count
-
-    guard enabledGraphsCount >= 4 else {
-        return baseSize
-    }
-
-    let clampedProgress = max(0, min(secondRowProgress, 1))
-    guard clampedProgress > 0 else {
-        return baseSize
-    }
-
-    var adjustedSize = baseSize
-    let extraHeight = (statsSecondRowContentHeight + statsGridSpacingHeight) * clampedProgress
-    adjustedSize.height += extraHeight
     return adjustedSize
 }
 
@@ -364,7 +305,10 @@ func getClosedNotchSize(screen: String? = nil) -> CGSize {
         if let topLeftNotchpadding: CGFloat = screen.auxiliaryTopLeftArea?.width,
            let topRightNotchpadding: CGFloat = screen.auxiliaryTopRightArea?.width
         {
-            notchWidth = screen.frame.width - topLeftNotchpadding - topRightNotchpadding + 4
+            // Downstream layout adds ~12pt of padding around the closed notch, which
+            // pushed the drawn black region past the physical notch on the 16" MacBook
+            // Pro. Offset by -8 here so the drawn region matches the physical notch.
+            notchWidth = screen.frame.width - topLeftNotchpadding - topRightNotchpadding - 8
             
             if Defaults[.customizePhysicalNotchWidth] {
                 notchWidth = Defaults[.closedNotchWidth]

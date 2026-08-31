@@ -138,120 +138,6 @@ enum AnimationSource: Codable, Hashable, Equatable {
     }
 }
 
-// MARK: - Extension Authorization Models
-
-enum ExtensionPermissionScope: String, CaseIterable, Codable, Defaults.Serializable {
-    case liveActivities
-    case lockScreenWidgets
-    case notchExperiences
-    case fileSharing
-
-    var displayName: String {
-        switch self {
-        case .liveActivities: return "Live Activities"
-        case .lockScreenWidgets: return "Lock Screen Widgets"
-        case .notchExperiences: return "Notch Experiences"
-        case .fileSharing: return "File Sharing"
-        }
-    }
-}
-
-enum ExtensionAuthorizationStatus: String, CaseIterable, Codable, Defaults.Serializable {
-    case pending
-    case authorized
-    case denied
-    case revoked
-
-    var isActive: Bool {
-        switch self {
-        case .authorized: return true
-        case .pending, .denied, .revoked: return false
-        }
-    }
-}
-
-struct ExtensionAuthorizationEntry: Codable, Defaults.Serializable, Identifiable, Hashable {
-    let bundleIdentifier: String
-    var appName: String
-    var status: ExtensionAuthorizationStatus
-    var allowedScopes: Set<ExtensionPermissionScope>
-    var requestedAt: Date
-    var grantedAt: Date?
-    var lastActivityAt: Date?
-    var lastDeniedReason: String?
-    var notes: String?
-
-    var id: String { bundleIdentifier }
-
-    init(
-        bundleIdentifier: String,
-        appName: String,
-        status: ExtensionAuthorizationStatus,
-        allowedScopes: Set<ExtensionPermissionScope> = Set(ExtensionPermissionScope.allCases),
-        requestedAt: Date = .now,
-        grantedAt: Date? = nil,
-        lastActivityAt: Date? = nil,
-        lastDeniedReason: String? = nil,
-        notes: String? = nil
-    ) {
-        self.bundleIdentifier = bundleIdentifier
-        self.appName = appName
-        self.status = status
-        self.allowedScopes = allowedScopes
-        self.requestedAt = requestedAt
-        self.grantedAt = grantedAt
-        self.lastActivityAt = lastActivityAt
-        self.lastDeniedReason = lastDeniedReason
-        self.notes = notes
-    }
-
-    var isAuthorized: Bool { status.isActive }
-}
-
-struct ExtensionRateLimitRecord: Codable, Defaults.Serializable, Hashable, Identifiable {
-    let bundleIdentifier: String
-    var activityTimestamps: [Date]
-    var widgetTimestamps: [Date]
-    var notchExperienceTimestamps: [Date]
-
-    var id: String { bundleIdentifier }
-
-    init(
-        bundleIdentifier: String,
-        activityTimestamps: [Date] = [],
-        widgetTimestamps: [Date] = [],
-        notchExperienceTimestamps: [Date] = []
-    ) {
-        self.bundleIdentifier = bundleIdentifier
-        self.activityTimestamps = activityTimestamps
-        self.widgetTimestamps = widgetTimestamps
-        self.notchExperienceTimestamps = notchExperienceTimestamps
-    }
-
-    private enum CodingKeys: String, CodingKey {
-        case bundleIdentifier
-        case activityTimestamps
-        case widgetTimestamps
-        case notchExperienceTimestamps
-    }
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        bundleIdentifier = try container.decode(String.self, forKey: .bundleIdentifier)
-        activityTimestamps = try container.decodeIfPresent([Date].self, forKey: .activityTimestamps) ?? []
-        widgetTimestamps = try container.decodeIfPresent([Date].self, forKey: .widgetTimestamps) ?? []
-        notchExperienceTimestamps = try container.decodeIfPresent([Date].self, forKey: .notchExperienceTimestamps) ?? []
-    }
-
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(bundleIdentifier, forKey: .bundleIdentifier)
-        try container.encode(activityTimestamps, forKey: .activityTimestamps)
-        try container.encode(widgetTimestamps, forKey: .widgetTimestamps)
-        try container.encode(notchExperienceTimestamps, forKey: .notchExperienceTimestamps)
-    }
-}
-
 enum CalendarSelectionState: Codable, Defaults.Serializable {
     case all
     case selected(Set<String>)
@@ -301,44 +187,6 @@ enum ThirdPartyCalendarApp: String, CaseIterable, Codable, Defaults.Serializable
         switch self {
         case .fantastical: return .red
         case .notionCalendar: return .blue
-        }
-    }
-}
-
-enum ScreenAssistantDisplayMode: String, CaseIterable, Codable, Defaults.Serializable {
-    case popover = "popover"     // Traditional popover attached to button
-    case panel = "panel"         // Floating panel near notch
-    
-    var displayName: String {
-        switch self {
-        case .popover: return String(localized: "Popover")
-        case .panel: return String(localized: "Panel")
-        }
-    }
-    
-    var description: String {
-        switch self {
-        case .popover: return String(localized: "Shows screen assistant as a dropdown attached to the AI button")
-        case .panel: return String(localized: "Shows screen assistant in a floating panel near the notch")
-        }
-    }
-}
-
-enum ColorPickerDisplayMode: String, CaseIterable, Codable, Defaults.Serializable {
-    case popover = "popover"     // Traditional popover attached to button
-    case panel = "panel"         // Floating panel near notch
-    
-    var displayName: String {
-        switch self {
-        case .popover: return "Popover"
-        case .panel: return "Panel"
-        }
-    }
-    
-    var description: String {
-        switch self {
-        case .popover: return "Shows color picker as a dropdown attached to the color picker button"
-        case .panel: return "Shows color picker in a floating panel near the notch"
         }
     }
 }
@@ -713,186 +561,6 @@ enum ReminderPresentationStyle: String, CaseIterable, Identifiable, Defaults.Ser
     }
 }
 
-// AI Model types for screen assistant
-enum AIModelProvider: String, CaseIterable, Identifiable, Defaults.Serializable {
-    case gemini = "Gemini"
-    case openai = "OpenAI GPT"
-    case claude = "Claude"
-    case local = "Local Model"
-    case groq = "Groq"
-    
-    var id: String { self.rawValue }
-    
-    var displayName: String {
-        return self.rawValue
-    }
-    
-    var description: String {
-        switch self {
-        case .gemini: return "Google's Gemini AI with multimodal capabilities"
-        case .openai: return "OpenAI's GPT models with advanced reasoning"
-        case .claude: return "Anthropic's Claude with strong analytical skills"
-        case .local: return "Local AI model (Ollama or similar)"
-        case .groq: return "Groq's fast inference for OpenAI-compatible models"
-        }
-    }
-    
-    var supportedModels: [AIModel] {
-        switch self {
-        case .gemini:
-            return [
-                // Gemini 2.5 Models (Latest)
-                AIModel(id: "gemini-2.5-pro", name: "Gemini 2.5 Pro", supportsThinking: true),
-                AIModel(id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", supportsThinking: true),
-                AIModel(id: "gemini-2.5-flash-lite", name: "Gemini 2.5 Flash-Lite", supportsThinking: false),
-                AIModel(id: "gemini-2.5-flash-live", name: "Gemini 2.5 Flash Live", supportsThinking: false),
-                AIModel(id: "gemini-2.5-flash-native-audio", name: "Gemini 2.5 Flash Native Audio", supportsThinking: true),
-                
-                // Gemini 2.0 Models
-                AIModel(id: "gemini-2.0-flash", name: "Gemini 2.0 Flash", supportsThinking: false),
-                AIModel(id: "gemini-2.0-flash-lite", name: "Gemini 2.0 Flash-Lite", supportsThinking: false),
-                AIModel(id: "gemini-2.0-flash-live", name: "Gemini 2.0 Flash Live", supportsThinking: false),
-                
-                // Legacy 1.5 Models (for compatibility)
-                AIModel(id: "gemini-1.5-pro", name: "Gemini 1.5 Pro", supportsThinking: false),
-                AIModel(id: "gemini-1.5-flash", name: "Gemini 1.5 Flash", supportsThinking: false)
-            ]
-        case .openai:
-            return [
-                AIModel(id: "gpt-4o", name: "GPT-4o", supportsThinking: false),
-                AIModel(id: "gpt-4o-mini", name: "GPT-4o Mini", supportsThinking: false),
-                AIModel(id: "o1-preview", name: "o1 Preview", supportsThinking: true),
-                AIModel(id: "o1-mini", name: "o1 Mini", supportsThinking: true)
-            ]
-        case .claude:
-            return [
-                AIModel(id: "claude-3-5-sonnet", name: "Claude 3.5 Sonnet", supportsThinking: false),
-                AIModel(id: "claude-3-haiku", name: "Claude 3 Haiku", supportsThinking: false)
-            ]
-        case .local:
-            return [
-                AIModel(id: "llama3.2", name: "Llama 3.2", supportsThinking: false),
-                AIModel(id: "qwen2.5", name: "Qwen 2.5", supportsThinking: false)
-            ]
-        case .groq:
-            return [
-                AIModel(id: "llama-3.3-70b-versatile", name: "Llama 3.3 70B Versatile", supportsThinking: false),
-                AIModel(id: "llama-3.1-8b-instant", name: "Llama 3.1 8B Instant", supportsThinking: false),
-                AIModel(id: "qwen-qwq-32b", name: "Qwen QWQ 32B", supportsThinking: false),
-                AIModel(id: "mixtral-8x7b-32768", name: "Mixtral 8x7B", supportsThinking: false)
-            ]
-        }
-    }
-}
-
-struct AIModel: Codable, Identifiable, Defaults.Serializable {
-    let id: String
-    let name: String
-    let supportsThinking: Bool
-    
-    var displayName: String {
-        return name + (supportsThinking ? " (Thinking)" : "")
-    }
-}
-
-struct NoteItem: Codable, Identifiable, Defaults.Serializable, Hashable {
-    var id: UUID = UUID()
-    var title: String
-    var content: String
-    var creationDate: Date
-    var modificationDate: Date
-    var colorIndex: Int // 0: Yellow, 1: Blue, 2: Red, 3: Green
-    var isPinned: Bool = false
-    var imageFileName: String? = nil // Store filename instead of raw data
-    var appleNotesId: String? = nil
-    
-    // Internal property for migration
-    private enum CodingKeys: String, CodingKey {
-        case id, title, content, creationDate, modificationDate, colorIndex, isPinned, imageFileName, imageData, appleNotesId
-    }
-    
-    init(
-        id: UUID = UUID(),
-        title: String,
-        content: String,
-        creationDate: Date,
-        modificationDate: Date? = nil,
-        colorIndex: Int,
-        isPinned: Bool = false,
-        imageFileName: String? = nil,
-        appleNotesId: String? = nil
-    ) {
-        self.id = id
-        self.title = title
-        self.content = content
-        self.creationDate = creationDate
-        self.modificationDate = modificationDate ?? creationDate
-        self.colorIndex = colorIndex
-        self.isPinned = isPinned
-        self.imageFileName = imageFileName
-        self.appleNotesId = appleNotesId
-    }
-    
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        id = try container.decode(UUID.self, forKey: .id)
-        title = try container.decode(String.self, forKey: .title)
-        content = try container.decode(String.self, forKey: .content)
-        creationDate = try container.decode(Date.self, forKey: .creationDate)
-        modificationDate = try container.decodeIfPresent(Date.self, forKey: .modificationDate) ?? creationDate
-        colorIndex = try container.decode(Int.self, forKey: .colorIndex)
-        isPinned = try container.decode(Bool.self, forKey: .isPinned)
-        appleNotesId = try container.decodeIfPresent(String.self, forKey: .appleNotesId)
-        
-        // Migration logic: if imageData exists but imageFileName doesn't, save it to disk
-        if let data = try container.decodeIfPresent(Data.self, forKey: .imageData) {
-            let fileName = "note_image_\(id.uuidString).png"
-            let fileURL = NoteItem.noteImageDataDirectory.appendingPathComponent(fileName)
-            try? data.write(to: fileURL)
-            imageFileName = fileName
-        } else {
-            imageFileName = try container.decodeIfPresent(String.self, forKey: .imageFileName)
-        }
-    }
-    
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(id, forKey: .id)
-        try container.encode(title, forKey: .title)
-        try container.encode(content, forKey: .content)
-        try container.encode(creationDate, forKey: .creationDate)
-        try container.encode(modificationDate, forKey: .modificationDate)
-        try container.encode(colorIndex, forKey: .colorIndex)
-        try container.encode(isPinned, forKey: .isPinned)
-        try container.encode(imageFileName, forKey: .imageFileName)
-        try container.encodeIfPresent(appleNotesId, forKey: .appleNotesId)
-    }
-    
-    static let colors: [Color] = [.yellow, .blue, .red, .green, .purple, .orange]
-    
-    // Directory for storing note image files
-    static let noteImageDataDirectory: URL = {
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-        let notesDir = documentsPath.appendingPathComponent("NoteImages")
-        try? FileManager.default.createDirectory(at: notesDir, withIntermediateDirectories: true)
-        return notesDir
-    }()
-    
-    var color: Color {
-        if colorIndex >= 0 && colorIndex < NoteItem.colors.count {
-            return NoteItem.colors[colorIndex]
-        }
-        return .yellow
-    }
-    
-    // Helper to get image data from file
-    func getImageData() -> Data? {
-        guard let fileName = imageFileName else { return nil }
-        let fileURL = NoteItem.noteImageDataDirectory.appendingPathComponent(fileName)
-        return try? Data(contentsOf: fileURL)
-    }
-}
-
 enum ColorExtractionMode: String, CaseIterable, Identifiable, Defaults.Serializable {
     case legacy, vibrant
     var id: Self { self }
@@ -909,7 +577,6 @@ enum LockScreenLiveActivityIconStyle: String, Defaults.Serializable {
 
 extension Defaults.Keys {
         // MARK: General
-    static let updateChannel = Key<UpdateChannel>("updateChannel", default: .stable)
     static let logLevel = Key<LogLevel>("logLevel", default: .none)
     static let menubarIcon = Key<Bool>("menubarIcon", default: true)
     static let showOnAllDisplays = Key<Bool>("showOnAllDisplays", default: false)
@@ -945,9 +612,6 @@ extension Defaults.Keys {
         // MARK: Appearance
     static let showEmojis = Key<Bool>("showEmojis", default: false)
         //static let alwaysShowTabs = Key<Bool>("alwaysShowTabs", default: true)
-    static let showMirror = Key<Bool>("showMirror", default: false)
-    static let mirrorShape = Key<MirrorShapeEnum>("mirrorShape", default: MirrorShapeEnum.rectangle)
-    static let selectedCameraID = Key<String>("selectedCameraID", default: "")
     static let settingsIconInNotch = Key<Bool>("settingsIconInNotch", default: true)
     static let lightingEffect = Key<Bool>("lightingEffect", default: true)
     static let accentColor = Key<Color>("accentColor", default: Color.blue)
@@ -1121,13 +785,6 @@ extension Defaults.Keys {
     static let lockScreenBatteryShowsChargingPercentage = Key<Bool>("lockScreenWeatherShowsChargingPercentage", default: true)
     static let lockScreenBatteryShowsBluetooth = Key<Bool>("lockScreenWeatherShowsBluetooth", default: true)
     
-        // MARK: Downloads
-    static let enableDownloadListener = Key<Bool>("enableDownloadListener", default: true)
-    static let enableSafariDownloads = Key<Bool>("enableSafariDownloads", default: true)
-    static let selectedDownloadIndicatorStyle = Key<DownloadIndicatorStyle>("selectedDownloadIndicatorStyle", default: DownloadIndicatorStyle.progress)
-    static let showDownloadSpeed = Key<Bool>("showDownloadSpeed", default: false)
-    static let selectedDownloadIconStyle = Key<DownloadIconStyle>("selectedDownloadIconStyle", default: DownloadIconStyle.onlyAppIcon)
-    
         // MARK: HUD
     static let inlineHUD = Key<Bool>("inlineHUD", default: true)
     static let progressBarStyle = Key<ProgressBarStyle>("progressBarStyle", default: .hierarchical)
@@ -1136,21 +793,6 @@ extension Defaults.Keys {
     static let systemEventIndicatorShadow = Key<Bool>("systemEventIndicatorShadow", default: false)
     static let systemEventIndicatorUseAccent = Key<Bool>("systemEventIndicatorUseAccent", default: false)
     static let showProgressPercentages = Key<Bool>("showProgressPercentages", default: true)
-    
-        // MARK: Shelf
-    static let dynamicShelf = Key<Bool>("dynamicShelf", default: true)
-    static let openShelfByDefault = Key<Bool>("openShelfByDefault", default: true)
-        static let quickShareProvider = Key<String>("quickShareProvider", default: "AirDrop")
-        static let localSendSelectedDeviceID = Key<String>("localSendSelectedDeviceID", default: "")
-        static let localSendDevicePickerGlassMode = Key<LockScreenGlassCustomizationMode>("localSendDevicePickerGlassMode", default: .standard)
-        static let localSendDevicePickerLiquidGlassVariant = Key<LiquidGlassVariant>("localSendDevicePickerLiquidGlassVariant", default: .v11)
-        static let copyOnDrag = Key<Bool>("copyOnDrag", default: false)
-        // Off by default: offering `.move` to another app lets Finder move the
-        // original out from under the user when the destination is on the same
-        // volume, which reads as data loss.
-        static let allowMoveOnDrag = Key<Bool>("allowMoveOnDrag", default: false)
-        static let autoRemoveShelfItems = Key<Bool>("autoRemoveShelfItems", default: false)
-        static let expandedDragDetection = Key<Bool>("expandedDragDetection", default: true)
     
         // MARK: Calendar
     static let calendarSelectionState = Key<CalendarSelectionState>("calendarSelectionState", default: .all)
@@ -1189,25 +831,6 @@ extension Defaults.Keys {
     static let useBluetoothHUD3DIcon = Key<Bool>("useBluetoothHUD3DIcon", default: true)
     static let showAirPodsListeningModeChanges = Key<Bool>("showAirPodsListeningModeChanges", default: true)
     
-    // MARK: Stats Feature
-    static let enableStatsFeature = Key<Bool>("enableStatsFeature", default: false)
-    static let enableLLMUsageFeature = Key<Bool>("enableLLMUsageFeature", default: false)
-    static let enableClaudeProvider = Key<Bool>("enableClaudeProvider", default: true)
-    static let enableCodexProvider = Key<Bool>("enableCodexProvider", default: true)
-    static let enableCursorProvider = Key<Bool>("enableCursorProvider", default: true)
-    static let enableAntigravityProvider = Key<Bool>("enableAntigravityProvider", default: true)
-    static let enableNewAPIProvider = Key<Bool>("enableNewAPIProvider", default: false)
-    static let newAPIAccounts = Key<[NewAPIAccount]>("newAPIAccounts", default: [])
-    static let autoStartStatsMonitoring = Key<Bool>("autoStartStatsMonitoring", default: true)
-    static let statsStopWhenNotchCloses = Key<Bool>("statsStopWhenNotchCloses", default: true)
-    static let statsUpdateInterval = Key<Double>("statsUpdateInterval", default: 1.0)
-    static let showCpuGraph = Key<Bool>("showCpuGraph", default: true)
-    static let showMemoryGraph = Key<Bool>("showMemoryGraph", default: true)
-    static let showGpuGraph = Key<Bool>("showGpuGraph", default: true)
-    static let showNetworkGraph = Key<Bool>("showNetworkGraph", default: false)
-    static let showDiskGraph = Key<Bool>("showDiskGraph", default: false)
-    static let cpuTemperatureUnit = Key<LockScreenWeatherTemperatureUnit>("cpuTemperatureUnit", default: .matchingSystemPreference)
-    
     // MARK: Timer Feature
     static let enableTimerFeature = Key<Bool>("enableTimerFeature", default: true)
     static let timerDisplayMode = Key<TimerDisplayMode>("timerDisplayMode", default: .tab)
@@ -1230,42 +853,6 @@ extension Defaults.Keys {
     static let reminderSneakPeekDuration = Key<Double>("reminderSneakPeekDuration", default: 5)
     // Legacy key name: the separate control window is gone, this now shows inline notch controls.
     static let timerControlWindowEnabled = Key<Bool>("timerControlWindowEnabled", default: true)
-    
-    // MARK: ColorPicker Feature
-    static let enableColorPickerFeature = Key<Bool>("enableColorPickerFeature", default: true)
-    static let showColorFormats = Key<Bool>("showColorFormats", default: true)
-    static let colorPickerDisplayMode = Key<ColorPickerDisplayMode>("colorPickerDisplayMode", default: .panel)
-    static let colorHistorySize = Key<Int>("colorHistorySize", default: 10)
-    static let showColorPickerIcon = Key<Bool>("showColorPickerIcon", default: true)
-    
-    
-    // MARK: Screen Assistant Feature
-    static let enableScreenAssistant = Key<Bool>("enableScreenAssistant", default: true)
-    static let screenAssistantDisplayMode = Key<ScreenAssistantDisplayMode>("screenAssistantDisplayMode", default: .panel)
-    static let geminiApiKey = Key<String>("geminiApiKey", default: "")
-    static let openaiApiKey = Key<String>("openaiApiKey", default: "")
-    static let claudeApiKey = Key<String>("claudeApiKey", default: "")
-    static let groqApiKey = Key<String>("groqApiKey", default: "")
-    static let selectedAIProvider = Key<AIModelProvider>("selectedAIProvider", default: .gemini)
-    static let selectedAIModel = Key<AIModel?>("selectedAIModel", default: nil)
-    static let enableThinkingMode = Key<Bool>("enableThinkingMode", default: false)
-    static let localModelEndpoint = Key<String>("localModelEndpoint", default: "http://localhost:11434")
-
-    // MARK: Third-Party Extensions
-    static let enableThirdPartyExtensions = Key<Bool>("enableThirdPartyExtensions", default: true)
-    static let enableExtensionLiveActivities = Key<Bool>("enableExtensionLiveActivities", default: true)
-    static let enableExtensionLockScreenWidgets = Key<Bool>("enableExtensionLockScreenWidgets", default: true)
-    static let enableExtensionNotchExperiences = Key<Bool>("enableExtensionNotchExperiences", default: true)
-    static let enableExtensionNotchTabs = Key<Bool>("enableExtensionNotchTabs", default: true)
-    static let enableExtensionNotchMinimalisticOverrides = Key<Bool>("enableExtensionNotchMinimalisticOverrides", default: true)
-    static let enableExtensionNotchInteractiveWebViews = Key<Bool>("enableExtensionNotchInteractiveWebViews", default: true)
-    static let extensionAuthorizationEntries = Key<[ExtensionAuthorizationEntry]>("extensionAuthorizationEntries", default: [])
-    static let extensionRateLimitRecords = Key<[ExtensionRateLimitRecord]>("extensionRateLimitRecords", default: [])
-    static let extensionDiagnosticsLoggingEnabled = Key<Bool>("extensionDiagnosticsLoggingEnabled", default: true)
-    static let extensionLiveActivityCapacity = Key<Int>("extensionLiveActivityCapacity", default: 4)
-    static let extensionLockScreenWidgetCapacity = Key<Int>("extensionLockScreenWidgetCapacity", default: 4)
-    static let extensionNotchExperienceCapacity = Key<Int>("extensionNotchExperienceCapacity", default: 2)
-    static let enableExtensionFileSharing = Key<Bool>("enableExtensionFileSharing", default: true)
     
     // MARK: Keyboard Shortcuts
     static let enableShortcuts = Key<Bool>("enableShortcuts", default: true)
@@ -1368,6 +955,7 @@ extension Defaults.Keys {
     static let capsLockIndicatorTintMode = Key<CapsLockIndicatorTintMode>("capsLockIndicatorTintMode", default: .white)
     static let didMigrateCapsLockTintMode = Key<Bool>("didMigrateCapsLockTintMode", default: false)
     static let didCleanupClipboardData = Key<Bool>("didCleanupClipboardData", default: false)
+    static let didCleanupArtNotchStrip = Key<Bool>("didCleanupArtNotchStrip", default: false)
     static let showCapsLockLabel = Key<Bool>("showCapsLockLabel", default: false)
     
     // MARK: ImageService
@@ -1385,24 +973,9 @@ extension Defaults.Keys {
     static let lyricsPanelOffset = Key<CGFloat>("lyricsPanelOffset", default: 0)
     static let showLiveCanvasInDynamicIsland = Key<Bool>("showLiveCanvasInDynamicIsland", default: false)
     
-    // MARK: Notes Feature
-    static let enableNotes = Key<Bool>("enableNotes", default: false)
-    static let enableNotePinning = Key<Bool>("enableNotePinning", default: true)
-    static let enableNoteSearch = Key<Bool>("enableNoteSearch", default: false)
-    static let enableNoteColorFiltering = Key<Bool>("enableNoteColorFiltering", default: false)
-    static let enableCreateFromClipboard = Key<Bool>("enableCreateFromClipboard", default: true)
-    static let enableNoteCharCount = Key<Bool>("enableNoteCharCount", default: true)
-    static let savedNotes = Key<[NoteItem]>("savedNotes", default: [])
-    static let enableAppleNotesSync = Key<Bool>("enableAppleNotesSync", default: false)
-    static let appleNotesLastSyncDate = Key<Date?>("appleNotesLastSyncDate", default: nil)
-    
-    // Helper to determine the default media controller based on macOS version
+    // Helper to determine the default media controller
     static var defaultMediaController: MediaControllerType {
-        if #available(macOS 15.4, *) {
-            return .appleMusic
-        } else {
-            return .nowPlaying
-        }
+        return .nowPlaying
     }
     
     // Migration helper to convert from legacy enableGradient Boolean to new ProgressBarStyle enum
@@ -1435,17 +1008,46 @@ extension Defaults.Keys {
     /// unsandboxed, so that is the user's real Documents folder. Deleting the feature's
     /// code leaves both behind, so clear them once on the first launch after the update.
     static func cleanupRemovedFeatureData() {
-        guard Defaults[.didCleanupClipboardData] == false else { return }
+        if Defaults[.didCleanupClipboardData] == false {
+            for key in ["ClipboardHistory", "ClipboardPinnedItems"] {
+                UserDefaults.standard.removeObject(forKey: key)
+            }
 
-        for key in ["ClipboardHistory", "ClipboardPinnedItems"] {
+            if let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+                try? FileManager.default.removeItem(at: documents.appendingPathComponent("ClipboardData"))
+            }
+
+            Defaults[.didCleanupClipboardData] = true
+        }
+
+        cleanupArtNotchStrippedFeatureData()
+    }
+
+    /// Clears data left behind by the features dropped in the artNotch strip
+    /// (color picker history, notes, shelf/file-drop). Like the clipboard manager
+    /// above, these wrote raw `UserDefaults` keys and unsandboxed folders in the
+    /// user's real Documents and Application Support, so clear them once.
+    static func cleanupArtNotchStrippedFeatureData() {
+        guard Defaults[.didCleanupArtNotchStrip] == false else { return }
+
+        for key in ["ColorPickerHistory", "savedNotes"] {
             UserDefaults.standard.removeObject(forKey: key)
         }
 
         if let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
-            try? FileManager.default.removeItem(at: documents.appendingPathComponent("ClipboardData"))
+            try? FileManager.default.removeItem(at: documents.appendingPathComponent("NoteImages"))
+            try? FileManager.default.removeItem(at: documents.appendingPathComponent("CopiedItems"))
         }
 
-        Defaults[.didCleanupClipboardData] = true
+        if let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+            try? FileManager.default.removeItem(
+                at: appSupport
+                    .appendingPathComponent("DynamicIsland", isDirectory: true)
+                    .appendingPathComponent("Shelf", isDirectory: true)
+            )
+        }
+
+        Defaults[.didCleanupArtNotchStrip] = true
     }
 
     static func migrateCapsLockTintMode() {

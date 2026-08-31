@@ -783,10 +783,8 @@ struct MusicControlsView: View {
 
 struct NotchHomeView: View {
     @EnvironmentObject var vm: DynamicIslandViewModel
-    @ObservedObject var webcamManager = WebcamManager.shared
     @ObservedObject var batteryModel = BatteryStatusViewModel.shared
     @ObservedObject var coordinator = DynamicIslandViewCoordinator.shared
-    @ObservedObject private var extensionNotchExperienceManager = ExtensionNotchExperienceManager.shared
     @ObservedObject private var musicManager = MusicManager.shared
     @Default(.showStandardMediaControls) private var showStandardMediaControls
     @Default(.autoHideInactiveNotchMediaPlayer) private var autoHideInactiveNotchMediaPlayer
@@ -817,14 +815,7 @@ struct NotchHomeView: View {
     private var mainContent: some View {
         Group {
             if Defaults[.enableMinimalisticUI] {
-                if let overridePayload = minimalisticOverridePayload {
-                    ExtensionMinimalisticExperienceView(
-                        payload: overridePayload,
-                        albumArtNamespace: albumArtNamespace
-                    )
-                } else {
-                    MinimalisticMusicPlayerView(albumArtNamespace: albumArtNamespace)
-                }
+                MinimalisticMusicPlayerView(albumArtNamespace: albumArtNamespace)
             } else if shouldShowSideLyrics {
                 sideLyricsContent
             } else {
@@ -849,10 +840,6 @@ struct NotchHomeView: View {
                         }
                         .environmentObject(vm)
                     }
-
-                    if mirrorIsVisible {
-                        cameraPreview
-                    }
                 }
             }
         }
@@ -873,27 +860,7 @@ struct NotchHomeView: View {
                 .frame(width: max(0, lyricsPanelWidth), alignment: .topLeading)
                 .padding(.leading, max(0, -lyricsPanelOffset))
                 .offset(x: lyricsPanelOffset)
-
-            if mirrorIsVisible {
-                cameraPreview
-                    .frame(minWidth: SideLyricsLayout.minimumMirrorWidth, maxWidth: .infinity)
-            }
         }
-    }
-
-    private var mirrorIsVisible: Bool {
-        Defaults[.showMirror] && webcamManager.cameraAvailable && vm.notchState == .open
-    }
-
-    private var cameraPreview: some View {
-        CameraPreviewView(webcamManager: webcamManager)
-            .scaledToFit()
-            .opacity(vm.notchState == .closed ? 0 : 1)
-            .blur(radius: vm.notchState == .closed ? 20 : 0)
-    }
-
-    private var minimalisticOverridePayload: ExtensionNotchExperiencePayload? {
-        extensionNotchExperienceManager.minimalisticReplacementPayload()
     }
 }
 

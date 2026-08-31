@@ -31,10 +31,6 @@ class DynamicIslandViewModel: NSObject, ObservableObject {
     @Published var contentType: ContentType = .normal
     @Published private(set) var notchState: NotchState = .closed
 
-    @Published var dragDetectorTargeting: Bool = false
-    @Published var dropZoneTargeting: Bool = false
-    @Published var dropEvent: Bool = false
-    @Published var anyDropZoneTargeting: Bool = false
     var cancellables: Set<AnyCancellable> = []
 
     /// Teardown hook ContentView registers in `onAppear`; the window-cleanup path
@@ -45,8 +41,6 @@ class DynamicIslandViewModel: NSObject, ObservableObject {
     @Published var hideOnClosed: Bool = true
     @Published var isHoveringCalendar: Bool = false
     @Published var isBatteryPopoverActive: Bool = false
-    @Published var isColorPickerPopoverActive: Bool = false
-    @Published var isStatsPopoverActive: Bool = false
     @Published var isReminderPopoverActive: Bool = false
     /// Whether any output picker popover is open.
     ///
@@ -115,10 +109,6 @@ class DynamicIslandViewModel: NSObject, ObservableObject {
         isAutoCloseSuppressed = false
     }
 
-    let webcamManager = WebcamManager.shared
-    @Published var isCameraExpanded: Bool = false
-    @Published var isRequestingAuthorization: Bool = false
-
     @Published var screen: String?
 
     @Published var notchSize: CGSize = getClosedNotchSize()
@@ -145,13 +135,6 @@ class DynamicIslandViewModel: NSObject, ObservableObject {
         notchSize = getClosedNotchSize(screen: screen)
         closedNotchSize = notchSize
 
-        Publishers.CombineLatest($dropZoneTargeting, $dragDetectorTargeting)
-            .map { value1, value2 in
-                value1 || value2
-            }
-            .assign(to: \.anyDropZoneTargeting, on: self)
-            .store(in: &cancellables)
-        
         setupDetectorObserver()
 
         ReminderLiveActivityManager.shared.$activeWindowReminders
@@ -209,48 +192,6 @@ class DynamicIslandViewModel: NSObject, ObservableObject {
             }
             .store(in: &cancellables)
 
-        coordinator.$statsSecondRowExpansion
-            .removeDuplicates()
-            .receive(on: RunLoop.main)
-            .sink { [weak self] _ in
-                guard let self else { return }
-                guard self.notchState == .open else { return }
-                let updatedTarget = self.calculateDynamicNotchSize()
-                guard self.notchSize != updatedTarget else { return }
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    self.notchSize = updatedTarget
-                }
-                if let delegate = AppDelegate.shared {
-                    delegate.ensureWindowSize(
-                        addShadowPadding(to: updatedTarget, isMinimalistic: Defaults[.enableMinimalisticUI]),
-                        animated: false,
-                        force: false
-                    )
-                }
-            }
-            .store(in: &cancellables)
-
-        coordinator.$notesLayoutState
-            .removeDuplicates()
-            .receive(on: RunLoop.main)
-            .sink { [weak self] _ in
-                guard let self else { return }
-                guard self.notchState == .open else { return }
-                let updatedTarget = self.calculateDynamicNotchSize()
-                guard self.notchSize != updatedTarget else { return }
-                withAnimation(.easeInOut(duration: 0.25)) {
-                    self.notchSize = updatedTarget
-                }
-                if let delegate = AppDelegate.shared {
-                    delegate.ensureWindowSize(
-                        addShadowPadding(to: updatedTarget, isMinimalistic: Defaults[.enableMinimalisticUI]),
-                        animated: true,
-                        force: false
-                    )
-                }
-            }
-            .store(in: &cancellables)
-
         Defaults.publisher(.openNotchWidth, options: [])
             .map { $0.newValue }
             .removeDuplicates()
@@ -279,13 +220,11 @@ class DynamicIslandViewModel: NSObject, ObservableObject {
             Defaults.publisher(.showCalendar, options: []).map { _ in () }.eraseToAnyPublisher(),
             Defaults.publisher(.showStandardMediaControls, options: []).map { _ in () }.eraseToAnyPublisher(),
             Defaults.publisher(.autoHideInactiveNotchMediaPlayer, options: []).map { _ in () }.eraseToAnyPublisher(),
-            Defaults.publisher(.showMirror, options: []).map { _ in () }.eraseToAnyPublisher(),
             Defaults.publisher(.lyricsPanelWidth, options: []).map { _ in () }.eraseToAnyPublisher(),
             Defaults.publisher(.lyricsPanelOffset, options: []).map { _ in () }.eraseToAnyPublisher(),
             MusicManager.shared.$isPlaying.map { _ in () }.eraseToAnyPublisher(),
             MusicManager.shared.$songTitle.map { _ in () }.eraseToAnyPublisher(),
-            MusicManager.shared.$artistName.map { _ in () }.eraseToAnyPublisher(),
-            WebcamManager.shared.$cameraAvailable.map { _ in () }.eraseToAnyPublisher()
+            MusicManager.shared.$artistName.map { _ in () }.eraseToAnyPublisher()
         )
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
@@ -405,27 +344,12 @@ class DynamicIslandViewModel: NSObject, ObservableObject {
         let baseSize = Defaults[.enableMinimalisticUI] ? minimalisticOpenNotchSize(isDynamicIslandMode: shouldUseDynamicIslandMode(for: screen)) : openNotchSize
         var adjustedSize = baseSize
 
-        if coordinator.currentView == .notes {
-            let preferred = coordinator.notesLayoutState.preferredHeight
-            adjustedSize.height = max(adjustedSize.height, preferred)
-            return adjustedSize
-        }
-
-        if coordinator.currentView == .llmUsage {
-            adjustedSize.height = max(adjustedSize.height, llmUsageOpenNotchHeight)
-            return adjustedSize
-        }
-
         adjustedSize = inlineLyricsAdjustedNotchSize(
             from: adjustedSize,
             isHomeTabActive: coordinator.currentView == .home
         )
 
-        return statsAdjustedNotchSize(
-            from: adjustedSize,
-            isStatsTabActive: coordinator.currentView == .stats,
-            secondRowProgress: coordinator.statsSecondRowExpansion
-        )
+        return adjustedSize
     }
 
     func close() {
@@ -436,11 +360,8 @@ class DynamicIslandViewModel: NSObject, ObservableObject {
         resetScrollGestureSuppression()
         resetAutoCloseSuppression()
 
-        // Set the current view to shelf if it contains files and the user enables openShelfByDefault
-        // Otherwise, if the user has not enabled openLastShelfByDefault, set the view to home
-        if !ShelfStateViewModel.shared.isEmpty && Defaults[.openShelfByDefault] && !Defaults[.enableMinimalisticUI] {
-            coordinator.currentView = .shelf
-        } else if !coordinator.openLastTabByDefault {
+        // If the user has not enabled openLastTabByDefault, reset the view to home
+        if !coordinator.openLastTabByDefault {
             coordinator.currentView = .home
         }
     }
@@ -470,45 +391,4 @@ class DynamicIslandViewModel: NSObject, ObservableObject {
         }
     }
     
-    func toggleCameraPreview() {
-        if isRequestingAuthorization {
-            return
-        }
-
-        switch webcamManager.authorizationStatus {
-        case .authorized:
-            if webcamManager.isSessionRunning {
-                webcamManager.stopSession()
-                isCameraExpanded = false
-            } else if webcamManager.cameraAvailable {
-                webcamManager.startSession()
-                isCameraExpanded = true
-            }
-
-        case .denied, .restricted:
-            DispatchQueue.main.async {
-                NSApp.setActivationPolicy(.regular)
-                NSApp.activate(ignoringOtherApps: true)
-
-                let alert = NSAlert()
-                alert.messageText = "Camera Access Required"
-                alert.informativeText = "Please allow camera access in System Settings."
-                alert.addButton(withTitle: "OK")
-                alert.runModal()
-
-                NSApp.setActivationPolicy(.accessory)
-                NSApp.deactivate()
-            }
-
-        case .notDetermined:
-            isRequestingAuthorization = true
-            webcamManager.checkAndRequestVideoAuthorization()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                self.isRequestingAuthorization = false
-            }
-
-        default:
-            break
-        }
-    }
 }
