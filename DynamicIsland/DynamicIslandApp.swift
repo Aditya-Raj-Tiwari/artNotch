@@ -530,6 +530,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         LockScreenManager.shared.configure(viewModel: vm)
 
+        // Volume / brightness HUD shown inside the notch. Drives the
+        // SystemChangesObserver that powers the media-key HUD.
+        SystemHUDManager.shared.setup(coordinator: coordinator)
+
         // Migrate legacy progress bar settings
         Defaults.Keys.migrateProgressBarStyle()
         Defaults.Keys.migrateMusicAuxControls()
