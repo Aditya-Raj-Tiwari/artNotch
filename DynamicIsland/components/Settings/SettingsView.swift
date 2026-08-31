@@ -28,9 +28,9 @@ private enum SettingsTabGroup: String, CaseIterable, Identifiable {
     var title: String? {
         switch self {
         case .core:             return nil
-        case .mediaAndDisplay:  return String(localized: "Media & Display")
+        case .mediaAndDisplay:  return String(localized: "Media")
         case .system:           return String(localized: "System")
-        case .productivity:     return String(localized: "Productivity")
+        case .productivity:     return String(localized: "Tools")
         case .info:             return nil
         }
     }
@@ -68,11 +68,11 @@ private enum SettingsTab: String, CaseIterable, Identifiable {
         case .liveActivities: return String(localized: "Live Activities")
         case .appearance: return String(localized: "Appearance")
         case .lockScreen: return String(localized: "Lock Screen")
-        case .media: return String(localized: "Media")
+        case .media: return String(localized: "Now Playing")
         case .devices: return String(localized: "Devices")
-        case .timer: return String(localized: "Timer")
+        case .timer: return String(localized: "Timers")
         case .calendar: return String(localized: "Calendar")
-        case .hudAndOSD: return String(localized: "Controls")
+        case .hudAndOSD: return String(localized: "HUD & Controls")
         case .battery: return String(localized: "Battery")
         case .about: return String(localized: "About")
         }
