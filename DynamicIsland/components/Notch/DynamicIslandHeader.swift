@@ -67,8 +67,9 @@ struct DynamicIslandHeader: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            // Plain opacity fade -- the animated `.blur` gaussian-blurred the tab
+            // bar every frame of the open spring for no real visual gain.
             .opacity(vm.notchState == .closed ? 0 : 1)
-            .blur(radius: vm.notchState == .closed ? 20 : 0)
             .animation(.smooth.delay(0.1), value: vm.notchState)
             .zIndex(2)
             .padding(8)
@@ -180,8 +181,8 @@ struct DynamicIslandHeader: View {
             }
             .font(.system(.headline, design: .rounded))
             .frame(maxWidth: .infinity, alignment: .trailing)
+            // Plain opacity fade -- see the tab-bar section above.
             .opacity(vm.notchState == .closed ? 0 : 1)
-            .blur(radius: vm.notchState == .closed ? 20 : 0)
             .animation(.smooth.delay(0.1), value: vm.notchState)
             .zIndex(2)
         }

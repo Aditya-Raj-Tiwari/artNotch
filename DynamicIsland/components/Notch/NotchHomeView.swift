@@ -262,15 +262,23 @@ struct AlbumArtView: View {
             .clipped()
             .scaleEffect(x: 1.3, y: 1.4)
             .rotationEffect(.degrees(92))
-            .blur(radius: 40)
+            // The blurred artwork backdrop and its colored glow are gated behind
+            // `vm.isOpenSettled`: a radius-40 gaussian blur plus a shadow on the
+            // rotated/scaled artwork is one of the most expensive per-frame passes
+            // in the notch, so it must not run during the open spring. Kept fully
+            // hidden (radius 0, opacity 0) until settled, then faded in with the
+            // settle animation so it never blur-rasterizes mid-transition.
+            .blur(radius: vm.isOpenSettled ? 40 : 0)
             .opacity(
-                usesLiveCanvasArtwork
-                    ? (musicManager.isPlaying ? 0.62 : 0.18)
-                    : (musicManager.isPlaying ? 0.5 : 0)
+                vm.isOpenSettled
+                    ? (usesLiveCanvasArtwork
+                        ? (musicManager.isPlaying ? 0.62 : 0.18)
+                        : (musicManager.isPlaying ? 0.5 : 0))
+                    : 0
             )
             .shadow(
-                color: Color(nsColor: musicManager.avgColor).opacity(usesLiveCanvasArtwork ? 0.24 : 0.16),
-                radius: usesLiveCanvasArtwork ? 22 : 14,
+                color: Color(nsColor: musicManager.avgColor).opacity(vm.isOpenSettled ? (usesLiveCanvasArtwork ? 0.24 : 0.16) : 0),
+                radius: vm.isOpenSettled ? (usesLiveCanvasArtwork ? 22 : 14) : 0,
                 x: 0,
                 y: 0
             )
@@ -286,7 +294,10 @@ struct AlbumArtView: View {
                     appIconOverlay
                 }
                 .albumArtFlip(angle: musicManager.flipAngle)
-                .parallax3D()
+                // Suspend the parallax 3D tilt (continuous-hover tracking +
+                // rotation3DEffect) until the open spring settles, so it doesn't
+                // compound the expand animation's cost.
+                .parallax3D(suspended: !vm.isOpenSettled)
                 .padding(.bottom, -5)
 
             }
@@ -302,7 +313,9 @@ struct AlbumArtView: View {
             .aspectRatio(1, contentMode: .fit)
             .foregroundColor(Color.black)
             .opacity(musicManager.isPlaying ? 0 : 0.8)
-            .blur(radius: 50)
+            // Suspend the radius-50 blur during the open spring; only pay for it
+            // once settled (and only visible while paused anyway).
+            .blur(radius: vm.isOpenSettled ? 50 : 0)
     }
 
     private var albumArtImage: some View {
@@ -809,7 +822,10 @@ struct NotchHomeView: View {
                 mainContent
             }
         }
-        .transition(.opacity.combined(with: .blurReplace))
+        // A plain opacity fade instead of `.blurReplace`: blurReplace rasterizes
+        // and gaussian-blurs the whole home subtree on every frame of the open
+        // spring, which drops frames on expand.
+        .transition(.opacity)
     }
 
     private var mainContent: some View {
@@ -843,10 +859,13 @@ struct NotchHomeView: View {
                 }
             }
         }
+        // Opacity + a subtle scale instead of `.blurReplace`, and no closed-state
+        // `.blur(radius: 30)`: both blur the entire home subtree every frame of the
+        // open spring (an offscreen rasterize + gaussian pass), which is what made
+        // the expand animation drop frames. The fade/scale reads just as soft.
         .transition(.opacity.animation(.smooth.speed(0.9))
-            .combined(with: .blurReplace.animation(.smooth.speed(0.9)))
+            .combined(with: .scale(scale: 0.97).animation(.smooth.speed(0.9)))
             .combined(with: .move(edge: .top)))
-        .blur(radius: vm.notchState == .closed ? 30 : 0)
         .padding(Defaults[.enableMinimalisticUI] ? 0 : 8) //Putting the main padding for home view here for consistency
     }
 

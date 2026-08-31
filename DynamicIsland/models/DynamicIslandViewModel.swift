@@ -31,6 +31,18 @@ class DynamicIslandViewModel: NSObject, ObservableObject {
     @Published var contentType: ContentType = .normal
     @Published private(set) var notchState: NotchState = .closed
 
+    /// True only once the open spring has effectively settled. Expensive,
+    /// offscreen-rasterizing decorations (the notch drop shadow, the blurred
+    /// artwork backdrop, the album-art parallax) are gated behind this so they
+    /// are never blur-rasterized on every frame of the open/expand animation --
+    /// the single biggest source of dropped frames during expand. Reset the
+    /// instant we start closing so the close spring is unblurred too.
+    @Published private(set) var isOpenSettled: Bool = false
+
+    /// Fires `isOpenSettled` shortly after the open spring is launched. Cancelled
+    /// if the notch closes again before the spring has settled.
+    private var settleTask: Task<Void, Never>?
+
     var cancellables: Set<AnyCancellable> = []
 
     /// Teardown hook ContentView registers in `onAppear`; the window-cleanup path
@@ -336,6 +348,19 @@ class DynamicIslandViewModel: NSObject, ObservableObject {
         notchSize = targetSize
         notchState = .open
 
+        // Reveal the shadow/blur decorations only after the open spring has
+        // effectively settled, and fade them in so they don't pop. Response of
+        // the open spring is 0.42; 0.5s clears the visible motion.
+        settleTask?.cancel()
+        isOpenSettled = false
+        settleTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(500))
+            guard let self, !Task.isCancelled else { return }
+            withAnimation(.easeIn(duration: 0.2)) {
+                self.isOpenSettled = true
+            }
+        }
+
         // Force music information update when notch is opened
         MusicManager.shared.forceUpdate()
     }
@@ -353,6 +378,10 @@ class DynamicIslandViewModel: NSObject, ObservableObject {
     }
 
     func close() {
+        // Drop the settled decorations immediately so the close spring animates
+        // without an offscreen shadow/blur pass on every frame.
+        settleTask?.cancel()
+        isOpenSettled = false
         let targetSize = getClosedNotchSize(screen: screen)
         notchSize = targetSize
         closedNotchSize = targetSize
@@ -367,6 +396,8 @@ class DynamicIslandViewModel: NSObject, ObservableObject {
     }
 
     func closeForLockScreen() {
+        settleTask?.cancel()
+        isOpenSettled = false
         let targetSize = getClosedNotchSize(screen: screen)
         withAnimation(.none) {
             notchSize = targetSize

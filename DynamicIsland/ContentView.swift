@@ -529,6 +529,14 @@ struct ContentView: View {
         return AnyShape(currentNotchShape)
     }
 
+    /// Whether the notch drop shadow should be drawn. Suppressed during the
+    /// open/expand and close springs (see the shadow modifier for why) -- it
+    /// only appears once `vm.isOpenSettled` flips after the open spring, or on a
+    /// brief closed-pill hover.
+    private var shadowVisible: Bool {
+        vm.isOpenSettled || (isHovering && vm.notchState == .closed)
+    }
+
     var body: some View {
         installRootLifecycleHandlers(on: rootBodyView)
     }
@@ -552,11 +560,17 @@ struct ContentView: View {
                 }
             }
             .compositingGroup()
+            // Only draw the drop shadow once the open spring has settled (or on a
+            // closed-pill hover, which is a small, brief state). Drawing it during
+            // the open/expand transition forces an offscreen rasterize + gaussian
+            // blur of the whole notch on every frame -- the main cause of dropped
+            // frames on expand. `radius: 0` when hidden avoids the blur entirely,
+            // not just a clear color the compositor might still blur.
             .shadow(
-                color: ((vm.notchState == .open || isHovering) && Defaults[.enableShadow])
+                color: (shadowVisible && Defaults[.enableShadow])
                     ? .black.opacity(0.6)
                     : .clear,
-                radius: Defaults[.cornerRadiusScaling] ? 10 : 5
+                radius: shadowVisible ? (Defaults[.cornerRadiusScaling] ? 10 : 5) : 0
             )
             // Extra horizontal inset for Dynamic Island mode so the shadow
             // is not clipped by the outer frame constraint
@@ -575,7 +589,9 @@ struct ContentView: View {
                     .animation(hoverAnimation, value: isHovering)
                     .animation(notchStateAnimation, value: vm.notchState)
                     .animation(.smooth, value: gestureProgress)
-                    .transition(.blurReplace.animation(.interactiveSpring(dampingFraction: 1.2)))
+                    // Opacity fade rather than `.blurReplace` so the notch is not
+                    // gaussian-blurred on every frame of the open/close spring.
+                    .transition(.opacity.animation(.interactiveSpring(dampingFraction: 1.2)))
             }
             .conditionalModifier(useModernCloseAnimation) { view in
                 let hoverAnimation = Animation.bouncy.speed(1.2)
