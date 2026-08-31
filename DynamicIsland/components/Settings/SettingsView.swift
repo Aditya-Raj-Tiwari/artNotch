@@ -3410,20 +3410,6 @@ struct About: View {
                 HStack(spacing: 30) {
                     Spacer(minLength: 0)
                     Button {
-                        NSWorkspace.shared.open(sponsorPage)
-                    } label: {
-                        VStack(spacing: 5) {
-                            Image(systemName: "cup.and.saucer.fill")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundStyle(.primary)
-                                .shadow(color: .black.opacity(0.15), radius: 2, y: 1)
-                            Text("Donate")
-                                .foregroundStyle(.primary)
-                        }
-                        .contentShape(Rectangle())
-                    }
-                    Spacer(minLength: 0)
-                    Button {
                         NSWorkspace.shared.open(productPage)
                     } label: {
                         VStack(spacing: 5) {
@@ -3440,17 +3426,12 @@ struct About: View {
                     Spacer(minLength: 0)
                 }
                 .buttonStyle(PlainButtonStyle())
-                
-                Text("Your support funds software development learning for students in 9th–12th grade.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.bottom, 5)
+                .padding(.bottom, 5)
 
                 VStack(spacing: 0) {
                     Divider()
                         .padding(.bottom, 5)
-                    Text("Made with ❤️ by Ebullioscopic")
+                    Text("Made with ❤️ by Aditya Raj Tiwari")
                         .foregroundStyle(.secondary)
                         .padding(.bottom, 7)
                         .multilineTextAlignment(.center)

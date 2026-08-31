@@ -74,7 +74,7 @@ struct WelcomeView: View {
                     
                     // Privacy Policy Link
                     Button(action: {
-                        if let url = URL(string: "https://ebullioscopic.github.io/DynamicIsland/privacy-policy") {
+                        if let url = URL(string: "https://github.com/Aditya-Raj-Tiwari/artNotch") {
                             NSWorkspace.shared.open(url)
                         }
                     }) {
@@ -88,14 +88,6 @@ struct WelcomeView: View {
                 .padding(.top)
             }
             
-            Image("ebullioscopic")
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(height: 22)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                .padding()
-                .padding(.bottom, 36)
-                .blendMode(.overlay)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .ignoresSafeArea()
