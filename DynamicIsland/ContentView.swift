@@ -563,7 +563,7 @@ struct ContentView: View {
             .padding(.horizontal, isIslandMode ? dynamicIslandShadowInset : 0)
             .padding(.bottom, isIslandMode ? dynamicIslandShadowInset : 0)
             .padding(.top, pillTopOffset)
-            .accessibilityIdentifier("AtollNotch")
+            .accessibilityIdentifier("artNotchNotch")
     }
 
     private var configuredMainLayoutCore: some View {
