@@ -18,8 +18,6 @@
 
 import SwiftUI
 import Defaults
-import EventKit
-
 // MARK: - Shared auto-scroll helpers
 
 /// Partition events into all-day and timed groups.

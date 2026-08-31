@@ -17,8 +17,6 @@
  */
 
 import Foundation
-import Darwin
-
 final class DisplayServicesDynamic {
     static let shared = DisplayServicesDynamic()
 

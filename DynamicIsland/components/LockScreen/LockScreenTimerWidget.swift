@@ -103,15 +103,6 @@ struct LockScreenTimerWidget: View {
         return timerGlassStyle == .liquid && timerGlassCustomizationMode == .customLiquid
     }
 
-    private var usesStandardLiquidGlass: Bool {
-        guard usesGlassBackground else { return false }
-        guard timerGlassStyle == .liquid else { return false }
-        if #available(macOS 26.0, *) {
-            return timerGlassCustomizationMode == .standard
-        }
-        return false
-    }
-
     @ViewBuilder
     private var widgetBackground: some View {
         if usesGlassBackground {

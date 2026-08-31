@@ -48,9 +48,6 @@ final class NowPlayingController: ObservableObject, MediaControllerProtocol {
     var isWorking: Bool {
         return process != nil && process?.isRunning == true
     }
-    private var lastMusicItem:
-        (title: String, artist: String, album: String, duration: TimeInterval, artworkData: Data?)?
-
     // MARK: - Media Remote Functions
     private let mediaRemoteBundle: CFBundle
     private let MRMediaRemoteSendCommandFunction: @convention(c) (Int, AnyObject?) -> Void
@@ -141,13 +138,11 @@ final class NowPlayingController: ObservableObject, MediaControllerProtocol {
     }
     
     func toggleShuffle() async {
-        // MRMediaRemoteSendCommandFunction(6, nil)
         MRMediaRemoteSetShuffleModeFunction(playbackState.isShuffled ? 1 : 3)
         playbackState.isShuffled.toggle()
     }
     
     func toggleRepeat() async {
-        // MRMediaRemoteSendCommandFunction(7, nil)
         let newRepeatMode = (playbackState.repeatMode == .off) ? 3 : (playbackState.repeatMode.rawValue - 1)
         playbackState.repeatMode = RepeatMode(rawValue: newRepeatMode) ?? .off
         MRMediaRemoteSetRepeatModeFunction(newRepeatMode)
@@ -158,7 +153,6 @@ final class NowPlayingController: ObservableObject, MediaControllerProtocol {
         let process = Process()
         guard
             let scriptURL = Bundle.main.url(forResource: "mediaremote-adapter", withExtension: "pl"),
-            //let frameworkPath = Bundle.main.privateFrameworksPath?.appending("/MediaRemoteAdapter.framework")
             let frameworkPath =
                 Bundle.main.resourceURL?
                     .appendingPathComponent("MediaRemoteAdapter.framework")

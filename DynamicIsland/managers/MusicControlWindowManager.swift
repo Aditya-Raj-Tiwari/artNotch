@@ -19,9 +19,6 @@
 #if os(macOS)
 import AppKit
 import SwiftUI
-import SkyLightWindow
-import QuartzCore
-
 struct MusicControlWindowMetrics: FlyoutWindowMetrics {
     let notchHeight: CGFloat
     let notchWidth: CGFloat

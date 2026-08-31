@@ -151,10 +151,6 @@ class FullscreenMediaDetector: ObservableObject {
         return typed
     }
 
-    private func cleanupNotificationObservers() {
-        NSWorkspace.shared.notificationCenter.removeObserver(self)
-    }
-
     deinit {
         NSWorkspace.shared.notificationCenter.removeObserver(self)
     }

@@ -9,11 +9,9 @@ import AVFoundation
 import Combine
 import Defaults
 import EventKit
-import KeyboardShortcuts
 import LaunchAtLogin
 import LottieUI
 import SwiftUI
-import SwiftUIIntrospect
 import UniformTypeIdentifiers
 
 /// Groups for organizing settings tabs in the sidebar.
@@ -2029,7 +2027,7 @@ private struct ExternalDisplayIntegrationsSection: View {
         switch thirdPartyDDCProvider {
         case .betterDisplay:
             if !betterDisplayManager.isDetected {
-                return "Install [BetterDisplay](https://betterdisplay.pro) to control external display brightness (and optional volume) through Atoll's HUD."
+                return "Install [BetterDisplay](https://betterdisplay.pro) to control external display brightness (and optional volume) through artNotch's HUD."
             }
             if !ddcProviderRunning {
                 return "BetterDisplay is installed but not currently running. Launch BetterDisplay to enable integration."
@@ -2037,13 +2035,13 @@ private struct ExternalDisplayIntegrationsSection: View {
             return "BetterDisplay OSD events will be routed through artNotch's active HUD style. Brightness is always routed; volume is routed when external volume control listener is enabled below. Make sure BetterDisplay's OSD integration is enabled in Settings › Application › Integration."
         case .lunar:
             if !lunarManager.isDetected {
-                return "Install [Lunar](https://lunar.fyi) to control external display brightness, contrast, and optional volume through Atoll's HUD via DDC."
+                return "Install [Lunar](https://lunar.fyi) to control external display brightness, contrast, and optional volume through artNotch's HUD via DDC."
             }
             if !ddcProviderRunning {
                 return "Lunar is installed but not currently running. Launch Lunar to enable integration."
             }
             if lunarManager.isConnected {
-                return "Connected to Lunar's DDC socket. Brightness and contrast adjustments are shown through Atoll's HUD; volume follows when external volume control listener is enabled below."
+                return "Connected to Lunar's DDC socket. Brightness and contrast adjustments are shown through artNotch's HUD; volume follows when external volume control listener is enabled below."
             }
             return "Lunar is running but the socket connection is not yet established. It will connect automatically."
         }
@@ -2884,7 +2882,7 @@ struct Media: View {
 
             Picker(selection: $hideNotchOption, label:
                     HStack {
-                Text("Hide DynamicIsland Options")
+                Text("Hide artNotch Options")
                 customBadge(text: "Beta")
             }) {
                 Text("Always hide in fullscreen").tag(HideNotchOption.always)
@@ -3910,15 +3908,6 @@ struct Appearance: View {
     private var mainScreenHasPhysicalNotch: Bool {
         guard let screen = NSScreen.main else { return false }
         return screen.safeAreaInsets.top > 0
-    }
-
-    private var notchWidthRange: ClosedRange<Double> {
-        let minW = Double(currentRecommendedMinimumNotchWidth())
-        let maxW = min(900, Double(maxAllowedNotchWidth()))
-        return minW...max(minW, maxW)
-    }
-    private var defaultOpenNotchWidth: CGFloat {
-        currentRecommendedMinimumNotchWidth()
     }
 
     private func highlightID(_ title: String) -> String {
@@ -6052,25 +6041,6 @@ private func copyLatestCrashReport() {
     }
 }
 
-func proFeatureBadge() -> some View {
-    Text("Upgrade to Pro")
-        .foregroundStyle(Color(red: 0.545, green: 0.196, blue: 0.98))
-        .font(.footnote.bold())
-        .padding(.vertical, 3)
-        .padding(.horizontal, 6)
-        .background(RoundedRectangle(cornerRadius: 4).stroke(Color(red: 0.545, green: 0.196, blue: 0.98), lineWidth: 1))
-}
-
-func comingSoonTag() -> some View {
-    Text("Coming soon")
-        .foregroundStyle(.secondary)
-        .font(.footnote.bold())
-        .padding(.vertical, 3)
-        .padding(.horizontal, 6)
-        .background(Color(nsColor: .secondarySystemFill))
-        .clipShape(.capsule)
-}
-
 func customBadge(text: String) -> some View {
     Text(LocalizedStringKey(text))
         .foregroundStyle(.secondary)
@@ -6091,23 +6061,6 @@ func alphaBadge() -> some View {
             Capsule()
                 .fill(Color.orange.opacity(0.9))
         )
-}
-
-func warningBadge(_ text: String, _ description: String) -> some View {
-    Section {
-        HStack(spacing: 12) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 22))
-                .foregroundStyle(.yellow)
-            VStack(alignment: .leading) {
-                Text(text)
-                    .font(.headline)
-                Text(description)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-        }
-    }
 }
 
 struct TimerSettings: View {

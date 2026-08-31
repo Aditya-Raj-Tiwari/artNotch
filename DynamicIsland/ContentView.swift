@@ -20,13 +20,9 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import AVFoundation
-import Combine
 import Defaults
 import Foundation
-import KeyboardShortcuts
 import SwiftUI
-import SwiftUIIntrospect
 #if canImport(AppKit)
 import AppKit
 #elseif canImport(UIKit)
@@ -217,10 +213,6 @@ struct ContentView: View {
         guard !isMusicControlWindowVisible else { return }
         enqueueMusicControlWindowSync(forceRefresh: forceRefresh, delay: delay)
     }
-    private var dynamicNotchResizeAnimation: Animation? {
-        nil
-    }
-    
     private let zeroHeightHoverPadding: CGFloat = 10
     private let musicControlPauseGrace: TimeInterval = 5
     private let musicControlResumeDelay: TimeInterval = 0.24
@@ -440,18 +432,6 @@ struct ContentView: View {
 
     private var recordingHUDDefaultExpandedOnHover: Bool {
         recordingHUDLayout.showsDefaultExpansion
-    }
-
-    private var recordingHUDInlineExpandedOnHover: Bool {
-        recordingHUDLayout.showsInlineExpansion
-    }
-
-    private var recordingHUDExtraWidth: CGFloat {
-        recordingHUDLayout.extraWidth
-    }
-
-    private var recordingHUDExtraHeight: CGFloat {
-        recordingHUDLayout.extraHeight
     }
 
     private var displayedBatteryHUDLevel: Int {
@@ -699,16 +679,6 @@ struct ContentView: View {
                 Button("Settings") {
                     SettingsWindowController.shared.showWindow()
                 }
-//                Button("Edit") { // Doesnt work....
-//                    let dn = DynamicNotch(content: EditPanelView())
-//                    dn.toggle()
-//                }
-//                #if DEBUG
-//                .disabled(false)
-//                #else
-//                .disabled(true)
-//                #endif
-//                .keyboardShortcut("E", modifiers: .command)
             }
     }
 
@@ -1464,10 +1434,6 @@ struct ContentView: View {
         case .solid:
             return timerSolidColor
         }
-    }
-
-    private func reminderIconName(for reminder: ReminderLiveActivityManager.ReminderEntry, now: Date) -> String {
-        isReminderCritical(reminder, now: now) ? ReminderLiveActivityManager.criticalIconName : ReminderLiveActivityManager.standardIconName
     }
 
     private func isReminderCritical(_ reminder: ReminderLiveActivityManager.ReminderEntry, now: Date) -> Bool {

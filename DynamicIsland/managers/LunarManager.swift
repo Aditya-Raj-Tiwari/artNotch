@@ -36,12 +36,6 @@ struct LunarDisplayData: Codable {
 
 // MARK: - Lunar Control Category
 
-enum LunarControlCategory {
-    case brightness
-    case contrast
-    case volume
-}
-
 // MARK: - Lunar Manager
 
 /// Manages integration with the Lunar app (fyi.lunar.Lunar).

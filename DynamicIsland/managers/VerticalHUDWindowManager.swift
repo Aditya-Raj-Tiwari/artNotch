@@ -20,7 +20,6 @@
 import AppKit
 import SwiftUI
 import SkyLightWindow
-import QuartzCore
 import Defaults
 import Combine
 
@@ -116,12 +115,6 @@ final class VerticalHUDWindowManager {
         let isVisible = visibleOverride ?? (window.nsWindow.alphaValue > 0.01)
         let shouldAllowInteraction = Defaults[.enableVerticalHUD] && Defaults[.verticalHUDInteractive] && isVisible
         window.nsWindow.ignoresMouseEvents = !shouldAllowInteraction
-    }
-
-    private func updateWindowInteractivity() {
-        for window in windows.values {
-            applyInteractivity(window)
-        }
     }
 
     private func teardownWindows() {

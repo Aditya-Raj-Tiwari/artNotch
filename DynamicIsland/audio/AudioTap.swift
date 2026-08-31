@@ -21,10 +21,8 @@
  */
 
 import AppKit
-import AudioToolbox
 import CoreAudio
 import Defaults
-import simd
 import os.log
 
 private let audioTapLog = OSLog(subsystem: "com.atoll.dynamicisland", category: "AudioTap")

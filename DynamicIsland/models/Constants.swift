@@ -22,13 +22,8 @@
 
 import SwiftUI
 import Defaults
-import KeyboardShortcuts
-import Lottie
 import Foundation
 
-private let availableDirectories = FileManager
-    .default
-    .urls(for: .documentDirectory, in: .userDomainMask)
 let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
 let bundleIdentifier = Bundle.main.bundleIdentifier!
 let appVersion = "\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? ""))"
@@ -66,75 +61,6 @@ struct CustomAppIcon: Codable, Hashable, Equatable, Defaults.Serializable, Ident
 
     var fileURL: URL {
         Self.iconDirectory.appendingPathComponent(fileName)
-    }
-}
-
-// MARK: - Custom Idle Animation Models
-struct CustomIdleAnimation: Codable, Hashable, Equatable, Defaults.Serializable, Identifiable {
-    let id: UUID
-    var name: String
-    var source: AnimationSource
-    var speed: CGFloat = 1.0
-    var isBuiltIn: Bool = false  // Track if it's bundled vs user-added
-    
-    init(id: UUID = UUID(), name: String, source: AnimationSource, speed: CGFloat = 1.0, isBuiltIn: Bool = false) {
-        self.id = id
-        self.name = name
-        self.source = source
-        self.speed = speed
-        self.isBuiltIn = isBuiltIn
-    }
-    
-    /// Get the effective transform config (override or default)
-    func getTransformConfig() -> AnimationTransformConfig {
-        let override = Defaults[.animationTransformOverrides][id.uuidString]
-        if let override = override {
-            print("📋 [CustomIdleAnimation] Found override for '\(name)': \(override)")
-        } else {
-            print("📋 [CustomIdleAnimation] No override for '\(name)', using default")
-        }
-        return override ?? .default
-    }
-}
-
-struct AnimationTransformConfig: Codable, Hashable, Equatable, Defaults.Serializable {
-    var scale: CGFloat = 1.0
-    var offsetX: CGFloat = 0
-    var offsetY: CGFloat = 0
-    var cropWidth: CGFloat = 30
-    var cropHeight: CGFloat = 20
-    var rotation: CGFloat = 0
-    var opacity: CGFloat = 1.0
-    var paddingBottom: CGFloat = 0  // Allow adjustment to fill notch from bottom
-    var expandWithAnimation: Bool = false  // Whether notch should expand horizontally with animation
-    var loopMode: AnimationLoopMode = .loop  // Loop mode for animation
-    
-    static let `default` = AnimationTransformConfig()
-}
-
-enum AnimationLoopMode: String, Codable, CaseIterable {
-    case loop = "Loop"
-    case playOnce = "Play Once"
-    case autoReverse = "Auto Reverse"
-    
-    var lottieLoopMode: LottieLoopMode {
-        switch self {
-        case .loop: return .loop
-        case .playOnce: return .playOnce
-        case .autoReverse: return .autoReverse
-        }
-    }
-}
-
-enum AnimationSource: Codable, Hashable, Equatable {
-    case lottieFile(URL)        // Local file (in app support or bundle)
-    case lottieURL(URL)         // Remote URL
-    
-    var displayType: String {
-        switch self {
-        case .lottieFile: return "Local"
-        case .lottieURL: return "Remote"
-        }
     }
 }
 
@@ -607,11 +533,9 @@ extension Defaults.Keys {
     static let openNotchWidth = Key<CGFloat>("openNotchWidth", default: 640)
     static let closedNotchWidth = Key<CGFloat>("closedNotchWidth", default: 150)
     static let customizePhysicalNotchWidth = Key<Bool>("customizePhysicalNotchWidth", default: false)
-        //static let openLastTabByDefault = Key<Bool>("openLastTabByDefault", default: false)
     
         // MARK: Appearance
     static let showEmojis = Key<Bool>("showEmojis", default: false)
-        //static let alwaysShowTabs = Key<Bool>("alwaysShowTabs", default: true)
     static let settingsIconInNotch = Key<Bool>("settingsIconInNotch", default: true)
     static let lightingEffect = Key<Bool>("lightingEffect", default: true)
     static let accentColor = Key<Color>("accentColor", default: Color.blue)
@@ -619,10 +543,6 @@ extension Defaults.Keys {
     static let cornerRadiusScaling = Key<Bool>("cornerRadiusScaling", default: true)
     static let useModernCloseAnimation = Key<Bool>("useModernCloseAnimation", default: true)
     static let showNotHumanFace = Key<Bool>("showNotHumanFace", default: false)
-    static let customIdleAnimations = Key<[CustomIdleAnimation]>("customIdleAnimations", default: [])
-    static let selectedIdleAnimation = Key<CustomIdleAnimation?>("selectedIdleAnimation", default: nil)
-    static let animationTransformOverrides = Key<[String: AnimationTransformConfig]>("animationTransformOverrides", default: [:])
-    static let tileShowLabels = Key<Bool>("tileShowLabels", default: false)
     static let showCalendar = Key<Bool>("showCalendar", default: true)
     static let hideCompletedReminders = Key<Bool>("hideCompletedReminders", default: true)
     static let hideAllDayEvents = Key<Bool>("hideAllDayEvents", default: false)
@@ -800,12 +720,9 @@ extension Defaults.Keys {
         static let autoScrollToNextEvent = Key<Bool>("autoScrollToNextEvent", default: true)
     
         // MARK: Fullscreen Media Detection
-    static let alwaysHideInFullscreen = Key<Bool>("alwaysHideInFullscreen", default: false)
     
     static let hideNotchOption = Key<HideNotchOption>("hideNotchOption", default: .nowPlayingOnly)
     
-    // MARK: Wobble Animation
-    static let enableWobbleAnimation = Key<Bool>("enableWobbleAnimation", default: false)
     
     // MARK: Media Controller
     static let mediaController = Key<MediaControllerType>("mediaController", default: defaultMediaController)
@@ -930,8 +847,6 @@ extension Defaults.Keys {
     static let showRecordingIndicator = Key<Bool>("showRecordingIndicator", default: true)
     static let recordingHoverStyle = Key<RecordingHoverStyle>("recordingHoverStyle", default: .default)
     static let recordingControlMode = Key<RecordingControlMode>("recordingControlMode", default: .withStopButton)
-    // Polling removed - now uses event-driven private API detection (CGSIsScreenWatcherPresent)
-    // static let enableScreenRecordingPolling = Key<Bool>("enableScreenRecordingPolling", default: false)
 
     // MARK: Focus / Do Not Disturb Detection
     static let enableDoNotDisturbDetection = Key<Bool>("enableDoNotDisturbDetection", default: true)

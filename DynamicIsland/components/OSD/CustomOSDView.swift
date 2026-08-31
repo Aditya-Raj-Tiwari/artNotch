@@ -118,17 +118,6 @@ struct CustomOSDView: View {
         }
     }
     
-    private var textColor: Color {
-        switch osdIconColorStyle {
-        case .white, .whiteTransparent, .lightGray:
-            return .white
-        case .darkGray, .black, .blackTransparent:
-            return .black
-        case .auto, .autoTransparent:
-            return colorScheme == .dark ? .white : .black
-        }
-    }
-    
     // MARK: - Progress View
     
     private var progressView: some View {

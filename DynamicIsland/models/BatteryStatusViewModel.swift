@@ -23,7 +23,6 @@
 import Cocoa
 import Defaults
 import Foundation
-import IOKit.ps
 import SwiftUI
 
 enum BatteryTemporaryHUDKind: Equatable {
@@ -35,9 +34,6 @@ enum BatteryTemporaryHUDKind: Equatable {
 /// A view model that manages and monitors the battery status of the device
 class BatteryStatusViewModel: ObservableObject {
 
-    private var wasCharging: Bool = false
-    private var powerSourceChangedCallback: IOPowerSourceCallbackType?
-    private var runLoopSource: Unmanaged<CFRunLoopSource>?
     var animations: DynamicIslandAnimations = DynamicIslandAnimations()
     private let lowBatteryAlertSoundPlayer = AudioPlayer()
 
@@ -239,29 +235,6 @@ class BatteryStatusViewModel: ObservableObject {
         }
 
         return NSScreen.screens.first?.localizedName
-    }
-
-    private func preferredDynamicIslandTargetScreenName() -> String? {
-        let mainScreenName = NSScreen.main?.localizedName
-        let preferredNames = [coordinator.selectedScreen, coordinator.preferredScreen]
-
-        for candidate in preferredNames where shouldUseDynamicIslandMode(for: candidate) {
-            return candidate
-        }
-
-        if let externalDynamicIslandScreen = NSScreen.screens.first(where: {
-            $0.localizedName != mainScreenName && shouldUseDynamicIslandMode(for: $0.localizedName)
-        }) {
-            return externalDynamicIslandScreen.localizedName
-        }
-
-        if let anyDynamicIslandScreen = NSScreen.screens.first(where: {
-            shouldUseDynamicIslandMode(for: $0.localizedName)
-        }) {
-            return anyDynamicIslandScreen.localizedName
-        }
-
-        return nil
     }
 
     private func handleLowBatteryAlertIfNeeded(previousLevel: Float, newLevel: Float) {

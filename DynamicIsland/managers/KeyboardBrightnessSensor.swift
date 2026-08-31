@@ -18,7 +18,6 @@
 
 import Foundation
 import IOKit
-import IOKit.hid
 import ObjectiveC.runtime
 
 final class KeyboardBrightnessSensor {

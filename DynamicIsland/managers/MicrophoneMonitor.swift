@@ -50,7 +50,6 @@ class MicrophoneMonitor: ObservableObject {
     // MARK: - Private Properties
     private var defaultInputDevice: AudioDeviceID = 0
     private var isListenerRegistered: Bool = false
-    private var cancellables = Set<AnyCancellable>()
     
     // MARK: - Configuration
     // Pure event-driven - no polling

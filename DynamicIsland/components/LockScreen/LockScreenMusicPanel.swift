@@ -1355,16 +1355,8 @@ struct LockScreenMusicPanel: View {
         showMediaOutputControl && isOutputPickerVisible
     }
 
-    private var sliderExtraHeight: CGFloat {
-        sliderHeight(forExpanded: isExpanded, visible: shouldShowVolumeSlider)
-    }
-
     private var accessorySectionScrollMaxHeight: CGFloat {
         isExpanded ? 170 : 130
-    }
-
-    private var lyricsExtraHeight: CGFloat {
-        lyricsHeight(forExpanded: isExpanded, enabled: shouldShowInlineLyrics)
     }
 
     private var accessorySectionExtraHeight: CGFloat {
@@ -1437,21 +1429,6 @@ struct LockScreenMusicPanel: View {
             additionalWidth: panelAdditionalWidth(forExpanded: isExpanded),
             animated: animated
         )
-    }
-
-    private var volumeIconName: String {
-        if volumeModel.isMuted || volumeModel.level <= 0.001 {
-            return "speaker.slash.fill"
-        } else if volumeModel.level < 0.33 {
-            return "speaker.wave.1.fill"
-        } else if volumeModel.level < 0.66 {
-            return "speaker.wave.2.fill"
-        }
-        return "speaker.wave.3.fill"
-    }
-
-    private var volumePercentage: String {
-        "\(Int(round(volumeModel.level * 100)))%"
     }
 
     /// Opens or closes the output picker, refreshing the device list on the way

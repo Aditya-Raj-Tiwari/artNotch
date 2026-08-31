@@ -16,7 +16,6 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import AVFoundation
 import Combine
 import Defaults
 import KeyboardShortcuts
@@ -105,14 +104,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     // Debouncing mechanism for window size updates
     private var windowSizeUpdateWorkItem: DispatchWorkItem?
-//    let calendarManager = CalendarManager.shared
-//    var closeNotchWorkItem: DispatchWorkItem?
-//    private var previousScreens: [NSScreen]?
-//    private var onboardingWindowController: NSWindowController?
-//    private var cancellables = Set<AnyCancellable>()
-//    
-//    // Debouncing mechanism for window size updates
-//    private var windowSizeUpdateWorkItem: DispatchWorkItem?
     
     private func debouncedUpdateWindowSize() {
         // Cancel any existing work item
@@ -277,12 +268,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         window.contentView = FirstMouseHostingView(
             rootView: ContentView()
                 .environmentObject(viewModel)
-                //.moveToSky()
         )
         
         window.orderFrontRegardless()
         NotchSpaceManager.shared.notchSpace.windows.insert(window)
-        //SkyLightOperator.shared.delegateWindow(window)
         return window
     }
 

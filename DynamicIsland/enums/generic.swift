@@ -22,8 +22,6 @@
 
 import Foundation
 import Defaults
-import CoreGraphics
-
 public enum Style {
     case notch
     case floating

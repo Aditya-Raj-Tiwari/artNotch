@@ -22,7 +22,6 @@
 import AppKit
 import Cocoa
 import SwiftUI
-import simd
 import Defaults
 
 /// NSView-based real-time audio spectrum visualizer

@@ -543,7 +543,6 @@ final class ReminderLiveActivityManager: ObservableObject {
 
     @MainActor
     private func handleTick() async {
-        // Logger.log("Tick", category: .debug) // Too verbose
         let now = Date()
         if abs(currentDate.timeIntervalSince(now)) >= 0.5 {
             currentDate = now

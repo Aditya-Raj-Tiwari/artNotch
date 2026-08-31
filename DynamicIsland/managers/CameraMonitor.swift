@@ -48,7 +48,6 @@ class CameraMonitor: ObservableObject {
     @Published var isMonitoring: Bool = false
     
     // MARK: - Private Properties
-    private var cancellables = Set<AnyCancellable>()
     private var isListenerRegistered: Bool = false
     private var cameraDeviceIDs: [CMIOObjectID] = []
     
