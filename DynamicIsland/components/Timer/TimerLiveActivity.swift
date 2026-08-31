@@ -144,7 +144,12 @@ struct TimerLiveActivity: View {
     }
 
     private var clampedProgress: Double {
-        min(max(timerManager.progress, 0), 1)
+        // Quantize to 0.5% steps so the sub-pixel arc drift between 1s ticks does
+        // not retrigger the progress animation every second. On long timers the
+        // per-tick delta is below one step, so `clampedProgress` doesn't change at
+        // all and nothing animates.
+        let raw = min(max(timerManager.progress, 0), 1)
+        return (raw / 0.005).rounded() * 0.005
     }
 
     private var glyphColor: Color {
@@ -192,10 +197,25 @@ struct TimerLiveActivity: View {
         return true
     }
 
+    // Memoization for `measureTextWidth`. Core Text's `.size()` was being run for
+    // every wing width on every 1s timer tick; the measurement is deterministic
+    // for a given (text, font), and a running countdown cycles through only a
+    // handful of distinct strings. Main-thread only, so no locking is needed.
+    private static var textWidthCache: [String: CGFloat] = [:]
+
     private func measureTextWidth(_ text: String, font: PlatformFont) -> CGFloat {
+        let key = "\(font.fontName)|\(font.pointSize)|\(text)"
+        if let cached = Self.textWidthCache[key] {
+            return cached
+        }
+        // Bound the cache so a very long timer can't grow it without limit.
+        if Self.textWidthCache.count > 512 {
+            Self.textWidthCache.removeAll(keepingCapacity: true)
+        }
         let attributes: [NSAttributedString.Key: Any] = [.font: font]
-        let width = NSAttributedString(string: text, attributes: attributes).size().width
-        return CGFloat(ceil(width))
+        let width = CGFloat(ceil(NSAttributedString(string: text, attributes: attributes).size().width))
+        Self.textWidthCache[key] = width
+        return width
     }
 
     private func systemFont(size: CGFloat, weight: PlatformFont.Weight) -> PlatformFont {
@@ -335,7 +355,7 @@ struct TimerLiveActivity: View {
                     .trim(from: 0, to: clampedProgress)
                     .stroke(glyphColor, style: StrokeStyle(lineWidth: ringStrokeWidth, lineCap: .round))
                     .rotationEffect(.degrees(-90))
-                    .animation(.smooth(duration: 0.25), value: clampedProgress)
+                    .animation(.linear(duration: 0.1), value: clampedProgress) // short catch-up, not a per-tick spring (see clampedProgress)
                     .frame(width: ringDiameter, height: ringDiameter)
             }
 
@@ -390,7 +410,7 @@ struct TimerLiveActivity: View {
                                 Capsule()
                                     .fill(glyphColor)
                                     .frame(width: barWidth * max(0, CGFloat(clampedProgress)))
-                                    .animation(.smooth(duration: 0.25), value: clampedProgress)
+                                    .animation(.linear(duration: 0.1), value: clampedProgress) // short catch-up, not a per-tick spring (see clampedProgress)
                             }
                     }
                 }
@@ -409,7 +429,7 @@ struct TimerLiveActivity: View {
                 .trim(from: 0, to: clampedProgress)
                 .stroke(glyphColor, style: StrokeStyle(lineWidth: ringStrokeWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-                .animation(.smooth(duration: 0.25), value: clampedProgress)
+                .animation(.linear(duration: 0.1), value: clampedProgress) // short catch-up, not a per-tick spring (see clampedProgress)
         }
         .frame(width: diameter, height: diameter)
         .frame(width: ringWidth, height: notchContentHeight, alignment: .center)
@@ -438,7 +458,7 @@ struct TimerLiveActivity: View {
                         Capsule()
                             .fill(glyphColor)
                             .frame(width: barWidth * max(0, CGFloat(clampedProgress)))
-                            .animation(.smooth(duration: 0.25), value: clampedProgress)
+                            .animation(.linear(duration: 0.1), value: clampedProgress) // short catch-up, not a per-tick spring (see clampedProgress)
                     }
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
