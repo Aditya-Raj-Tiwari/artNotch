@@ -96,22 +96,6 @@ private enum SettingsTab: String, CaseIterable, Identifiable {
         }
     }
 
-    var tint: Color {
-        switch self {
-        case .general: return .blue
-        case .liveActivities: return .pink
-        case .appearance: return .purple
-        case .lockScreen: return .orange
-        case .media: return .green
-        case .devices: return Color(red: 0.1, green: 0.11, blue: 0.12)
-        case .timer: return .red
-        case .calendar: return .cyan
-        case .hudAndOSD: return .indigo
-        case .battery: return Color(red: 0.202, green: 0.783, blue: 0.348, opacity: 1.000)
-        case .about: return .secondary
-        }
-    }
-
     func highlightID(for title: String) -> String {
         "\(rawValue)-\(title)"
     }
@@ -364,12 +348,14 @@ struct SettingsView: View {
 
     @ViewBuilder
     private func sidebarIcon(for tab: SettingsTab) -> some View {
+        // Monochrome graphite chip with a white glyph — a single neutral look
+        // for every tab instead of per-tab accent colours.
         RoundedRectangle(cornerRadius: 8, style: .continuous)
             .fill(
                 LinearGradient(
                     colors: [
-                        tab.tint.opacity(1),
-                        tab.tint.opacity(0.7)
+                        Color(white: 0.32),
+                        Color(white: 0.20)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -381,7 +367,7 @@ struct SettingsView: View {
                     .strokeBorder(Color.white.opacity(0.2), lineWidth: 0.7)
                     .blendMode(.plusLighter)
             }
-            .shadow(color: tab.tint.opacity(0.35), radius: 2, x: 0, y: 1)
+            .shadow(color: Color.black.opacity(0.35), radius: 2, x: 0, y: 1)
             .overlay {
                 Image(systemName: tab.systemImage)
                     .font(.system(size: 13, weight: .semibold))
@@ -524,7 +510,7 @@ struct SettingsView: View {
                     } label: {
                         HStack(spacing: 10) {
                             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .fill(suggestion.tab.tint)
+                                .fill(Color(white: 0.26))
                                 .frame(width: 28, height: 28)
                                 .overlay {
                                     Image(systemName: suggestion.tab.systemImage)
