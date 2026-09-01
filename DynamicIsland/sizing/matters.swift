@@ -305,10 +305,11 @@ func getClosedNotchSize(screen: String? = nil) -> CGSize {
         if let topLeftNotchpadding: CGFloat = screen.auxiliaryTopLeftArea?.width,
            let topRightNotchpadding: CGFloat = screen.auxiliaryTopRightArea?.width
         {
-            // Downstream layout adds ~12pt of padding around the closed notch, which
-            // pushed the drawn black region past the physical notch on the 16" MacBook
-            // Pro. Offset by -8 here so the drawn region matches the physical notch.
-            notchWidth = screen.frame.width - topLeftNotchpadding - topRightNotchpadding - 8
+            // Widen the closed notch slightly beyond the physical notch so the
+            // closed now-playing wings (album art + visualizer) clear the hardware
+            // notch instead of being clipped under it. +16 gives ~8pt of extra
+            // breathing room on each side on the 16" MacBook Pro.
+            notchWidth = screen.frame.width - topLeftNotchpadding - topRightNotchpadding + 16
             
             if Defaults[.customizePhysicalNotchWidth] {
                 notchWidth = Defaults[.closedNotchWidth]
