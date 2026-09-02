@@ -71,6 +71,7 @@ public enum NotchState {
 public enum NotchViews {
     case home
     case timer
+    case focus
 }
 
 enum WindowHeightMode: String, Defaults.Serializable {

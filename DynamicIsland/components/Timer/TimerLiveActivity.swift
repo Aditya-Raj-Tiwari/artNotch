@@ -106,7 +106,7 @@ struct TimerLiveActivity: View {
 
     private var inlineControlsWidth: CGFloat {
         guard shouldShowInlineControls else { return 0 }
-        let count = timerManager.isOvertime ? 1 : 2
+        let count = (timerManager.isOvertime || !timerManager.supportsPause) ? 1 : 2
         return CGFloat(count) * inlineButtonSize + CGFloat(max(0, count - 1)) * inlineControlSpacing
     }
 
@@ -162,11 +162,11 @@ struct TimerLiveActivity: View {
     }
 
     private var showsRingProgress: Bool {
-        showsProgress && progressStyle == .ring
+        showsProgress && progressStyle == .ring && !timerManager.isOpenEnded
     }
 
     private var showsBarProgress: Bool {
-        showsProgress && progressStyle == .bar
+        showsProgress && progressStyle == .bar && !timerManager.isOpenEnded
     }
 
     private var shouldDisplayLabel: Bool {
@@ -359,7 +359,7 @@ struct TimerLiveActivity: View {
                     .frame(width: ringDiameter, height: ringDiameter)
             }
 
-            Image(systemName: "timer")
+            Image(systemName: timerManager.symbolName)
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(glyphColor)
                 .frame(width: iconSize, height: iconSize)
@@ -473,7 +473,7 @@ struct TimerLiveActivity: View {
     @ViewBuilder
     private var inlineControlsSection: some View {
         HStack(spacing: inlineControlSpacing) {
-            if !timerManager.isOvertime {
+            if !timerManager.isOvertime && timerManager.supportsPause {
                 inlineControlButton(
                     icon: timerManager.isPaused ? "play.fill" : "pause.fill",
                     foreground: .white,

@@ -107,7 +107,7 @@ struct TimerPopover: View {
     
     private func startPreset(_ preset: TimerPreset) {
         withAnimation(.smooth) {
-            timerManager.startTimer(duration: preset.duration, name: preset.name, preset: preset)
+            timerManager.start(preset: preset)
         }
         dismiss()
     }
@@ -163,7 +163,7 @@ private struct ActiveTimerSection: View {
             }
             
             HStack(spacing: 8) {
-                if !timerManager.isOvertime {
+                if !timerManager.isOvertime && timerManager.supportsPause {
                     Button(action: togglePause) {
                         Label(timerManager.isPaused ? String(localized: "Resume") : String(localized: "Pause"), systemImage: timerManager.isPaused ? "play.fill" : "pause.fill")
                             .font(.system(size: 12, weight: .medium))

@@ -103,6 +103,11 @@ func enabledStandardTabCount() -> Int {
         count += 1
     }
 
+    // Focus tab (Raycast Focus front end)
+    if Defaults[.raycastFocusIntegration] && RaycastFocusManager.shared.isRaycastInstalled {
+        count += 1
+    }
+
     return count
 }
 

@@ -45,6 +45,8 @@ struct TabSelectionView: View {
     @Default(.showCalendar) private var showCalendar
     @Default(.showStandardMediaControls) private var showStandardMediaControls
     @Default(.enableMinimalisticUI) private var enableMinimalisticUI
+    @Default(.raycastFocusIntegration) private var raycastFocusIntegration
+    @ObservedObject private var raycastFocusManager = RaycastFocusManager.shared
     @Namespace var animation
 
     private var tabs: [TabModel] {
@@ -56,6 +58,10 @@ struct TabSelectionView: View {
 
         if enableTimerFeature && timerDisplayMode == .tab {
             tabsArray.append(TabModel(label: "Timer", icon: "timer", view: .timer))
+        }
+
+        if raycastFocusIntegration && raycastFocusManager.isRaycastInstalled {
+            tabsArray.append(TabModel(label: "Focus", icon: "target", view: .focus))
         }
 
         return tabsArray

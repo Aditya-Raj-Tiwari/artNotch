@@ -760,6 +760,19 @@ extension Defaults.Keys {
     static let timerProgressStyle = Key<TimerProgressStyle>("timerProgressStyle", default: .bar)
     static let mirrorSystemTimer = Key<Bool>("mirrorSystemTimer", default: true)
     static let timerInputStyle = Key<TimerInputStyle>("timerInputStyle", default: .manual)
+    /// When enabled, finished focus timers and Raycast Focus sessions roll into a break countdown.
+    static let autoStartBreakAfterTimer = Key<Bool>("autoStartBreakAfterTimer", default: false)
+    static let autoBreakDurationMinutes = Key<Int>("autoBreakDurationMinutes", default: 5)
+
+    // MARK: Raycast Focus
+    static let raycastFocusIntegration = Key<Bool>("raycastFocusIntegration", default: true)
+    static let raycastFocusMode = Key<RaycastFocusBlockMode>("raycastFocusMode", default: .block)
+    static let raycastFocusSelectedCategories = Key<[String]>("raycastFocusSelectedCategories", default: ["social", "streaming", "news"])
+    /// Ids of the user's own Raycast categories, so they can be picked next to the built-ins.
+    static let raycastFocusCustomCategories = Key<[String]>("raycastFocusCustomCategories", default: [])
+    static let raycastFocusOpenEnded = Key<Bool>("raycastFocusOpenEnded", default: false)
+    static let raycastFocusDuration = Key<Double>("raycastFocusDuration", default: 25 * 60)
+    static let raycastFocusLastGoal = Key<String>("raycastFocusLastGoal", default: "")
     
     
     // MARK: Reminder Live Activity

@@ -57,16 +57,52 @@ struct TimerPreset: Identifiable, Codable, Hashable, Defaults.Serializable {
     var name: String
     var duration: TimeInterval
     var colorData: ColorData
+    /// Starts a Raycast Focus session (goal = name) instead of a plain countdown. Optional so
+    /// presets saved before this option existed still decode.
+    var startsFocusSession: Bool?
+    /// Raycast category ids the session blocks or allows; empty falls back to the Focus tab's selection.
+    var focusCategoryIds: [String]?
 
-    init(id: UUID = UUID(), name: String, duration: TimeInterval, colorData: ColorData) {
+    init(
+        id: UUID = UUID(),
+        name: String,
+        duration: TimeInterval,
+        colorData: ColorData,
+        startsFocusSession: Bool? = nil,
+        focusCategoryIds: [String]? = nil
+    ) {
         self.id = id
         self.name = name
         self.duration = duration
         self.colorData = colorData
+        self.startsFocusSession = startsFocusSession
+        self.focusCategoryIds = focusCategoryIds
     }
 
-    init(id: UUID = UUID(), name: String, duration: TimeInterval, color: Color) {
-        self.init(id: id, name: name, duration: duration, colorData: ColorData(color: color))
+    init(
+        id: UUID = UUID(),
+        name: String,
+        duration: TimeInterval,
+        color: Color,
+        startsFocusSession: Bool? = nil,
+        focusCategoryIds: [String]? = nil
+    ) {
+        self.init(
+            id: id,
+            name: name,
+            duration: duration,
+            colorData: ColorData(color: color),
+            startsFocusSession: startsFocusSession,
+            focusCategoryIds: focusCategoryIds
+        )
+    }
+
+    var blocksDistractions: Bool {
+        startsFocusSession ?? false
+    }
+
+    var resolvedFocusCategoryIds: [String] {
+        focusCategoryIds ?? []
     }
 
     var color: Color {

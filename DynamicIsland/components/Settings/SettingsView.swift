@@ -6072,6 +6072,12 @@ struct TimerSettings: View {
     @Default(.mirrorSystemTimer) private var mirrorSystemTimer
     @Default(.timerDisplayMode) private var timerDisplayMode
     @Default(.timerInputStyle) private var timerInputStyle
+    @Default(.raycastFocusIntegration) private var raycastFocusIntegration
+    @Default(.raycastFocusMode) private var raycastFocusMode
+    @Default(.raycastFocusCustomCategories) private var raycastFocusCustomCategories
+    @Default(.autoStartBreakAfterTimer) private var autoStartBreakAfterTimer
+    @Default(.autoBreakDurationMinutes) private var autoBreakDurationMinutes
+    @ObservedObject private var raycastFocusManager = RaycastFocusManager.shared
     @Default(.enableLockScreenTimerWidget) private var enableLockScreenTimerWidget
     @Default(.lockScreenTimerWidgetUsesBlur) private var timerGlassModeIsGlass
     @Default(.lockScreenTimerGlassStyle) private var lockScreenTimerGlassStyle
@@ -6163,8 +6169,69 @@ struct TimerSettings: View {
             lockScreenIntegrationSection
             customTimerSection
             appearanceSection
+            focusSection
             timerPresetsSection
             timerSoundSection
+        }
+    }
+
+    private var raycastFocusEnabled: Bool {
+        raycastFocusIntegration && raycastFocusManager.isRaycastInstalled
+    }
+
+    private var customCategoriesBinding: Binding<String> {
+        Binding(
+            get: { raycastFocusCustomCategories.joined(separator: ", ") },
+            set: { text in
+                raycastFocusCustomCategories = text
+                    .split(separator: ",")
+                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                    .filter { !$0.isEmpty }
+            }
+        )
+    }
+
+    @ViewBuilder
+    private var focusSection: some View {
+        Section {
+            if raycastFocusManager.isRaycastInstalled {
+                Defaults.Toggle(key: .raycastFocusIntegration) {
+                    Text("Integrate with Raycast Focus")
+                }
+                .settingsHighlight(id: highlightID("Integrate with Raycast Focus"))
+            } else {
+                Label("Raycast is not installed. Focus sessions with app and website blocking need it.", systemImage: "info.circle")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+            }
+
+            Picker("Default mode", selection: $raycastFocusMode) {
+                ForEach(RaycastFocusBlockMode.allCases) { mode in
+                    Text(mode.title).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            .help(raycastFocusMode.summary)
+            .disabled(!raycastFocusEnabled)
+
+            TextField("Custom category ids (comma separated)", text: customCategoriesBinding)
+                .textFieldStyle(.roundedBorder)
+                .disabled(!raycastFocusEnabled)
+
+            Defaults.Toggle(key: .autoStartBreakAfterTimer) {
+                Text("Start a break when a focus session or timer ends")
+            }
+            .settingsHighlight(id: highlightID("Start a break when a focus session or timer ends"))
+
+            if autoStartBreakAfterTimer {
+                Stepper(value: $autoBreakDurationMinutes, in: 1...60) {
+                    Text("Break length: \(autoBreakDurationMinutes) min")
+                }
+            }
+        } header: {
+            Text("Focus")
+        } footer: {
+            Text("Sessions started from the Focus tab run in Raycast Focus, which blocks the chosen categories of apps and websites; sessions started in Raycast show up in the notch as well. Raycast offers no pause control to other apps, so a session can only be completed from the notch. Custom categories are matched by the id Raycast assigns them.")
         }
     }
 
@@ -6606,6 +6673,23 @@ private struct TimerPresetEditorRow: View {
             ColorPicker("Accent colour", selection: colorBinding, supportsOpacity: false)
                 .frame(maxWidth: 240, alignment: .leading)
 
+            Toggle("Block distractions with Raycast Focus", isOn: focusToggleBinding)
+                .toggleStyle(.switch)
+                .disabled(!RaycastFocusManager.shared.isRaycastInstalled)
+
+            if preset.blocksDistractions {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 104), spacing: 8)], alignment: .leading, spacing: 8) {
+                    ForEach(RaycastFocusCategory.all(includingCustom: Defaults[.raycastFocusCustomCategories])) { category in
+                        Toggle(category.title, isOn: categoryBinding(category.id))
+                            .toggleStyle(.button)
+                            .controlSize(.small)
+                    }
+                }
+                Text("Leave every category off to use the Focus tab's current selection.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             HStack(spacing: 12) {
                 Button(action: moveUp) {
                     Label("Move Up", systemImage: "chevron.up")
@@ -6630,6 +6714,28 @@ private struct TimerPresetEditorRow: View {
         }
         .padding(.vertical, 6)
         .settingsHighlightIfPresent(highlightID)
+    }
+
+    private var focusToggleBinding: Binding<Bool> {
+        Binding(
+            get: { preset.blocksDistractions },
+            set: { preset.startsFocusSession = $0 }
+        )
+    }
+
+    private func categoryBinding(_ id: String) -> Binding<Bool> {
+        Binding(
+            get: { preset.resolvedFocusCategoryIds.contains(id) },
+            set: { isOn in
+                var ids = preset.resolvedFocusCategoryIds
+                if isOn {
+                    if !ids.contains(id) { ids.append(id) }
+                } else {
+                    ids.removeAll { $0 == id }
+                }
+                preset.focusCategoryIds = ids
+            }
+        )
     }
 
     private func updateDuration(hours: Int? = nil, minutes: Int? = nil, seconds: Int? = nil) {

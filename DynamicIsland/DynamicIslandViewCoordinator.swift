@@ -85,7 +85,7 @@ class DynamicIslandViewCoordinator: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var hoverOpenSuppressedUntil: Date = .distantPast
     
-    private static let tabOrder: [NotchViews] = [.home, .timer]
+    private static let tabOrder: [NotchViews] = [.home, .timer, .focus]
     
     /// Direction of the most recent tab switch (true = forward/right, false = backward/left)
     @Published var tabSwitchForward: Bool = true
@@ -165,12 +165,20 @@ class DynamicIslandViewCoordinator: ObservableObject {
             }
             .store(in: &cancellables)
 
+        Defaults.publisher(.raycastFocusIntegration)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] change in
+                self?.handleRaycastFocusToggle(change.newValue)
+            }
+            .store(in: &cancellables)
+
         // Observe all tab-affecting settings to enforce minimum notch width
         Publishers.MergeMany(
             Defaults.publisher(.showStandardMediaControls).map { _ in () }.eraseToAnyPublisher(),
             Defaults.publisher(.showCalendar).map { _ in () }.eraseToAnyPublisher(),
             Defaults.publisher(.enableTimerFeature).map { _ in () }.eraseToAnyPublisher(),
             Defaults.publisher(.timerDisplayMode).map { _ in () }.eraseToAnyPublisher(),
+            Defaults.publisher(.raycastFocusIntegration).map { _ in () }.eraseToAnyPublisher(),
             Defaults.publisher(.enableMinimalisticUI).map { _ in () }.eraseToAnyPublisher()
         )
         .debounce(for: .milliseconds(100), scheduler: DispatchQueue.main)
@@ -200,6 +208,13 @@ class DynamicIslandViewCoordinator: ObservableObject {
 
     private func handleTimerFeatureToggle(_ isEnabled: Bool) {
         guard !isEnabled, currentView == .timer else { return }
+        withAnimation(.smooth) {
+            currentView = .home
+        }
+    }
+
+    private func handleRaycastFocusToggle(_ isEnabled: Bool) {
+        guard !isEnabled, currentView == .focus else { return }
         withAnimation(.smooth) {
             currentView = .home
         }

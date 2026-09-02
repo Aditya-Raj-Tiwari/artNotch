@@ -393,8 +393,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         var baseSize = Defaults[.enableMinimalisticUI] ? minimalisticOpenNotchSize(isDynamicIslandMode: shouldUseDynamicIslandMode(for: vm.screen)) : openNotchSize
         
         // Use a consistent height for different view types
-        if coordinator.currentView == .timer {
-            baseSize.height = 250 // Extra space for timer presets
+        if coordinator.currentView == .timer || coordinator.currentView == .focus {
+            baseSize.height = 250 // Extra space for timer presets / focus form
         }
 
         baseSize = inlineLyricsAdjustedNotchSize(
@@ -565,6 +565,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Setup Privacy Indicator Manager (camera/mic; skipped under UI testing).
         if !AppRuntimeEnvironment.isUITesting {
             PrivacyIndicatorManager.shared.startMonitoring()
+        }
+
+        // Raycast Focus: mirror sessions into the notch and let the Focus tab start them.
+        if !AppRuntimeEnvironment.isUITesting {
+            // `log stream` children of earlier artNotch processes that died without cleanup
+            // idle under launchd forever; clear them before starting our own.
+            DispatchQueue.global(qos: .utility).async {
+                UnifiedLogStream.reapOrphans(markers: [
+                    "semanticModeIdentifier",
+                    "com.apple.mobiletimer.logging",
+                    "noiseControlMode",
+                    "com.raycast.macos"
+                ])
+            }
+            RaycastFocusManager.shared.start()
         }
 
         // Observe tab changes - use immediate resize to keep the notch pinned

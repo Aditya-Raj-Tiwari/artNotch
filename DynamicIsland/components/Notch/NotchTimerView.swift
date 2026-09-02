@@ -119,7 +119,7 @@ struct NotchTimerView: View {
                     List {
                         ForEach(timerPresets) { preset in
                             TimerPresetCard(preset: preset, isActive: timerManager.activePresetId == preset.id) {
-                                timerManager.startTimer(duration: preset.duration, name: preset.name, preset: preset)
+                                timerManager.start(preset: preset)
                                 if !enableMinimalisticUI {
                                     coordinator.currentView = .timer
                                 }
@@ -173,7 +173,7 @@ struct NotchTimerView: View {
     private var leadingControlSection: some View {
         if timerManager.allowsManualInteraction {
             HStack(spacing: 10) {
-                if !timerManager.isOvertime {
+                if !timerManager.isOvertime && timerManager.supportsPause {
                     TimerControlButton(
                         icon: pauseIconName,
                         foreground: .white.opacity(0.95),
@@ -181,12 +181,14 @@ struct NotchTimerView: View {
                         accessibilityLabel: pauseAccessibilityLabel,
                         action: togglePauseAction
                     )
+                }
 
+                if !timerManager.isOvertime {
                     TimerControlButton(
                         icon: "xmark",
                         foreground: .white.opacity(0.95),
                         background: Color.white.opacity(0.16),
-                        accessibilityLabel: String(localized: "Cancel"),
+                        accessibilityLabel: timerManager.isRaycastFocusSession ? String(localized: "Complete") : String(localized: "Cancel"),
                         action: stopTimerAction
                     )
                 } else {
@@ -236,7 +238,7 @@ struct NotchTimerView: View {
     private var countdownSection: some View {
         if showsProgress && progressStyle == .ring {
             TimerProgressRing(
-                progress: timerManager.progress,
+                progress: timerManager.isOpenEnded ? 1 : timerManager.progress,
                 tint: timerAccentColor,
                 timeText: timerManager.formattedRemainingTime(),
                 isOvertime: timerManager.isOvertime,
@@ -264,7 +266,7 @@ struct NotchTimerView: View {
 
     @ViewBuilder
     private var progressSection: some View {
-        if showsProgress && progressStyle == .bar {
+        if showsProgress && progressStyle == .bar && !timerManager.isOpenEnded {
             Capsule()
                 .fill(Color.white.opacity(0.12))
                 .frame(height: 4)
@@ -420,6 +422,8 @@ struct NotchTimerView: View {
             return String(localized: "Paused")
         } else if timerManager.isFinished {
             return "Completed"
+        } else if timerManager.isRaycastFocusSession {
+            return String(localized: "Raycast Focus")
         }
         return nil
     }
@@ -541,7 +545,7 @@ struct NotchTimerView: View {
     }
 }
 
-private struct TimerControlButton: View {
+struct TimerControlButton: View {
     let icon: String
     let foreground: Color
     let background: Color
@@ -599,7 +603,7 @@ private struct TimerProgressRing: View {
     }
 }
 
-private struct DurationInputRow: View {
+struct DurationInputRow: View {
     @Binding var hours: Int
     @Binding var minutes: Int
     @Binding var seconds: Int
@@ -637,7 +641,7 @@ private struct DurationInputRow: View {
     }
 }
 
-private struct DurationField: View {
+struct DurationField: View {
     let label: String
     @Binding var value: Int
     let range: ClosedRange<Int>
@@ -709,9 +713,16 @@ private struct TimerPresetCard: View {
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.92))
                         .lineLimit(1)
-                    Text(preset.formattedDuration)
-                        .font(.system(size: 11, weight: .medium).monospacedDigit())
-                        .foregroundStyle(.white.opacity(0.45))
+                    HStack(spacing: 4) {
+                        Text(preset.formattedDuration)
+                            .font(.system(size: 11, weight: .medium).monospacedDigit())
+                        if preset.blocksDistractions {
+                            // Marks presets that hand off to Raycast Focus.
+                            Image(systemName: "target")
+                                .font(.system(size: 9, weight: .bold))
+                        }
+                    }
+                    .foregroundStyle(.white.opacity(0.45))
                 }
 
                 Spacer(minLength: 8)

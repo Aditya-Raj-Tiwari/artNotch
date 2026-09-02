@@ -39,10 +39,18 @@ class TimerManager: ObservableObject {
     @Published var lastUpdated: Date = .distantPast
     @Published var activePresetId: UUID?
     @Published private(set) var activeSource: TimerSource = .none
+    /// Which outside system owns the current external timer. Raycast Focus sessions outrank
+    /// a mirrored Clock timer; Clock never displaces a session.
+    @Published private(set) var externalOwner: ExternalTimerOwner?
+    /// Open-ended sessions (Raycast Focus "No limit") count up; there is nothing to count down from.
+    @Published private(set) var isOpenEnded: Bool = false
+    /// Set on a timer that was started automatically as a break, so a finished break never chains into another one.
+    private var isAutoBreak = false
+    private var autoBreakWorkItem: DispatchWorkItem?
     
     // Timer progress (0.0 to 1.0, or >1.0 for overtime)
     var progress: Double {
-        guard totalDuration > 0 else { return 0.0 }
+        guard totalDuration > 0, !isOpenEnded else { return 0.0 }
         if isOvertime {
             // For overtime, progress goes beyond 1.0
             return 1.0 + min(1.0, abs(remainingTime) / totalDuration)
@@ -53,6 +61,10 @@ class TimerManager: ObservableObject {
     
     // Color based on progress: green -> yellow -> red -> flashing red for overtime
     var timerColor: Color {
+        if isRaycastFocusSession || isOpenEnded {
+            // Raycast sessions stay monochrome, like Raycast's own Focus Bar.
+            return .white
+        }
         if isOvertime {
             // Flashing red for overtime
             return .red
@@ -103,6 +115,9 @@ class TimerManager: ObservableObject {
     
     // NSColor version for compatibility
     var timerNSColor: NSColor {
+        if isRaycastFocusSession || isOpenEnded {
+            return .white
+        }
         if isOvertime {
             return NSColor.systemRed
         }
@@ -161,7 +176,7 @@ class TimerManager: ObservableObject {
     }
     
     // MARK: - Timer Methods
-    func startTimer(duration: TimeInterval, name: String = "Timer", preset: TimerPreset? = nil) {
+    func startTimer(duration: TimeInterval, name: String = "Timer", preset: TimerPreset? = nil, isBreak: Bool = false) {
         if activeSource == .external {
             endExternalTimer(triggerSmoothClose: false)
         }
@@ -176,6 +191,9 @@ class TimerManager: ObservableObject {
             isTimerActive = true
         }
         activeSource = .manual
+        externalOwner = nil
+        isOpenEnded = false
+        isAutoBreak = isBreak
         isFinished = false
         isOvertime = false
         timerName = name
@@ -188,31 +206,7 @@ class TimerManager: ObservableObject {
         activePresetId = preset?.id
         
         // Start countdown timer
-        timerInstance = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
-            
-            Task { @MainActor in
-                if !self.isPaused {
-                    if self.remainingTime > 0 {
-                        // Normal countdown
-                        self.remainingTime -= 1
-                        self.elapsedTime = self.totalDuration - self.remainingTime
-                        self.lastUpdated = Date()
-                    } else if self.remainingTime == 0 {
-                        // Timer just finished - play sound and start overtime
-                        self.isFinished = true
-                        self.isOvertime = true
-                        self.playTimerSound()
-                        self.remainingTime = -1
-                        self.lastUpdated = Date()
-                    } else {
-                        // Overtime - count negative
-                        self.remainingTime -= 1
-                        self.lastUpdated = Date()
-                    }
-                }
-            }
-        }
+        timerInstance = makeCountdownTimer()
     }
     
     func startDemoTimer(duration: TimeInterval) {
@@ -225,15 +219,22 @@ class TimerManager: ObservableObject {
                 endExternalTimer(triggerSmoothClose: true)
                 return
             }
-            SystemTimerBridge.shared.controlClockTimer(.cancel) { [weak self] success in
-                guard let self else { return }
-                if !success {
-                    self.endExternalTimer(triggerSmoothClose: true)
+            switch externalOwner {
+            case .raycastFocus:
+                // Raycast tears the session down; its log event then ends the mirror.
+                RaycastFocusManager.shared.completeSession()
+            case .systemClock, .none:
+                SystemTimerBridge.shared.controlClockTimer(.cancel) { [weak self] success in
+                    guard let self else { return }
+                    if !success {
+                        self.endExternalTimer(triggerSmoothClose: true)
+                    }
                 }
             }
             return
         }
 
+        cancelAutoBreak()
         timerInstance?.invalidate()
         timerInstance = nil
         soundPlayer?.stop()
@@ -253,6 +254,7 @@ class TimerManager: ObservableObject {
         }
 
         // Immediate stop for user action (stop button)
+        cancelAutoBreak()
         timerInstance?.invalidate()
         timerInstance = nil
         soundPlayer?.stop()
@@ -264,6 +266,10 @@ class TimerManager: ObservableObject {
     
     func pauseTimer() {
         if activeSource == .external {
+            guard externalOwner != .raycastFocus else {
+                logExternalControlFailure("pause")
+                return
+            }
             SystemTimerBridge.shared.controlClockTimer(.pause) { [weak self] success in
                 if !success {
                     self?.logExternalControlFailure("pause")
@@ -280,6 +286,10 @@ class TimerManager: ObservableObject {
     
     func resumeTimer() {
         if activeSource == .external {
+            guard externalOwner != .raycastFocus else {
+                logExternalControlFailure("resume")
+                return
+            }
             SystemTimerBridge.shared.controlClockTimer(.resume) { [weak self] success in
                 if !success {
                     self?.logExternalControlFailure("resume")
@@ -293,62 +303,81 @@ class TimerManager: ObservableObject {
         lastUpdated = Date()
         
         // Resume countdown timer with same logic as start timer
-        timerInstance = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
-            
-            Task { @MainActor in
-                if !self.isPaused {
-                    if self.remainingTime > 0 {
-                        // Normal countdown
-                        self.remainingTime -= 1
-                        self.elapsedTime = self.totalDuration - self.remainingTime
-                        self.lastUpdated = Date()
-                    } else if self.remainingTime == 0 {
-                        // Timer just finished - play sound and start overtime
-                        self.isFinished = true
-                        self.isOvertime = true
-                        self.playTimerSound()
-                        self.remainingTime = -1
-                        self.lastUpdated = Date()
-                    } else {
-                        // Overtime - count negative
-                        self.remainingTime -= 1
-                        self.lastUpdated = Date()
-                    }
-                }
-            }
-        }
+        timerInstance = makeCountdownTimer()
     }
 
-    func adoptExternalTimer(name: String, totalDuration: TimeInterval, remaining: TimeInterval, isPaused: Bool) {
-        guard activeSource != .manual else { return }
+    /// Mirrors a timer that lives outside artNotch (a Clock timer, a Raycast Focus session).
+    /// Returns false while a manual countdown runs or a higher-priority owner holds the slot.
+    @discardableResult
+    func adoptExternalTimer(
+        owner: ExternalTimerOwner,
+        name: String,
+        totalDuration: TimeInterval,
+        remaining: TimeInterval,
+        elapsed: TimeInterval? = nil,
+        isPaused: Bool,
+        isOpenEnded openEnded: Bool = false
+    ) -> Bool {
+        guard activeSource != .manual else { return false }
+        if activeSource == .external, let current = externalOwner, current != owner {
+            guard owner.outranks(current) else { return false }
+        }
 
         timerInstance?.invalidate()
         timerInstance = nil
         soundPlayer?.stop()
+        cancelAutoBreak()
         beginTimerSession()
 
         activeSource = .external
-
-        let clampedTotal = totalDuration > 0 ? totalDuration : max(totalDuration, remaining)
+        externalOwner = owner
+        isOpenEnded = openEnded
+        isAutoBreak = false
 
         withAnimation(.smooth) {
             isTimerActive = true
         }
 
-        timerName = name.isEmpty ? "Clock Timer" : name
-        self.totalDuration = clampedTotal
-        remainingTime = remaining
-        elapsedTime = max(0, clampedTotal - remaining)
+        timerName = name.isEmpty ? owner.fallbackName : name
+        if openEnded {
+            self.totalDuration = 0
+            remainingTime = 0
+            elapsedTime = max(0, elapsed ?? 0)
+            isOvertime = false
+        } else {
+            let clampedTotal = totalDuration > 0 ? totalDuration : max(totalDuration, remaining)
+            self.totalDuration = clampedTotal
+            remainingTime = remaining
+            elapsedTime = max(0, elapsed ?? (clampedTotal - remaining))
+            isOvertime = remaining < 0
+        }
         self.isPaused = isPaused
         isFinished = false
-        isOvertime = remaining < 0
         activePresetId = nil
         lastUpdated = Date()
+        return true
     }
 
-    func updateExternalTimer(remaining: TimeInterval, totalDuration: TimeInterval?, isPaused paused: Bool, name: String? = nil) {
-        guard activeSource == .external else { return }
+    func updateExternalTimer(
+        owner: ExternalTimerOwner,
+        remaining: TimeInterval,
+        totalDuration: TimeInterval?,
+        isPaused paused: Bool,
+        name: String? = nil,
+        elapsed: TimeInterval? = nil
+    ) {
+        guard activeSource == .external, externalOwner == owner else { return }
+
+        if let name, !name.isEmpty, name != timerName {
+            timerName = name
+        }
+
+        if isOpenEnded {
+            elapsedTime = max(0, elapsed ?? elapsedTime)
+            isPaused = paused
+            lastUpdated = Date()
+            return
+        }
 
         // Clock may reuse both the timer ID and duration. A positive update
         // after completion is nevertheless a new run and must invalidate the
@@ -358,10 +387,6 @@ class TimerManager: ObservableObject {
             withAnimation(.smooth) {
                 isTimerActive = true
             }
-        }
-
-        if let name, !name.isEmpty, name != timerName {
-            timerName = name
         }
 
         if let totalDuration, totalDuration > 0 {
@@ -378,8 +403,8 @@ class TimerManager: ObservableObject {
         lastUpdated = Date()
     }
 
-    func completeExternalTimer() {
-        guard activeSource == .external else { return }
+    func completeExternalTimer(owner: ExternalTimerOwner) {
+        guard activeSource == .external, externalOwner == owner else { return }
 
         lifecycle.completeSession()
         remainingTime = 0
@@ -390,8 +415,11 @@ class TimerManager: ObservableObject {
         scheduleSmoothClose()
     }
 
-    func endExternalTimer(triggerSmoothClose: Bool) {
+    /// Ends the mirrored timer. Pass an owner to end only that owner's timer; nil ends
+    /// whichever one is showing.
+    func endExternalTimer(owner: ExternalTimerOwner? = nil, triggerSmoothClose: Bool) {
         guard activeSource == .external else { return }
+        if let owner, externalOwner != owner { return }
 
         if triggerSmoothClose && isTimerActive {
             scheduleSmoothClose()
@@ -418,6 +446,9 @@ class TimerManager: ObservableObject {
         isOvertime = false
         activePresetId = nil
         activeSource = .none
+        externalOwner = nil
+        isOpenEnded = false
+        isAutoBreak = false
     }
 
     // MARK: - Derived State
@@ -430,6 +461,24 @@ class TimerManager: ObservableObject {
         activeSource == .external && isTimerActive
     }
 
+    func isExternalTimerActive(for owner: ExternalTimerOwner) -> Bool {
+        activeSource == .external && externalOwner == owner && isTimerActive
+    }
+
+    var isRaycastFocusSession: Bool {
+        activeSource == .external && externalOwner == .raycastFocus
+    }
+
+    /// Raycast exposes no pause control for Focus sessions (no deeplink, and the Focus Bar's
+    /// button ignores synthetic Accessibility presses), so pause is hidden for them.
+    var supportsPause: Bool {
+        !isRaycastFocusSession
+    }
+
+    var symbolName: String {
+        isRaycastFocusSession ? "target" : "timer"
+    }
+
     var hasManualTimerRunning: Bool {
         activeSource == .manual && isTimerActive
     }
@@ -437,7 +486,8 @@ class TimerManager: ObservableObject {
     var allowsManualInteraction: Bool {
         switch activeSource {
         case .external:
-            return SystemTimerBridge.shared.canControlClockTimer
+            // Raycast sessions can always be completed (deeplink); Clock needs Accessibility.
+            return externalOwner == .raycastFocus ? true : SystemTimerBridge.shared.canControlClockTimer
         default:
             return true
         }
@@ -451,6 +501,97 @@ class TimerManager: ObservableObject {
         case none
         case manual
         case external
+    }
+
+    enum ExternalTimerOwner: String {
+        case systemClock
+        case raycastFocus
+
+        var fallbackName: String {
+            switch self {
+            case .systemClock: return "Clock Timer"
+            case .raycastFocus: return String(localized: "Focus")
+            }
+        }
+
+        func outranks(_ other: ExternalTimerOwner) -> Bool {
+            self == .raycastFocus && other == .systemClock
+        }
+    }
+
+    // MARK: - Countdown, presets & breaks
+
+    private func makeCountdownTimer() -> Timer {
+        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+
+            Task { @MainActor in
+                guard !self.isPaused else { return }
+                if self.remainingTime > 0 {
+                    // Normal countdown
+                    self.remainingTime -= 1
+                    self.elapsedTime = self.totalDuration - self.remainingTime
+                    self.lastUpdated = Date()
+                } else if self.remainingTime == 0 {
+                    // Timer just finished - play sound and start overtime
+                    self.isFinished = true
+                    self.isOvertime = true
+                    self.playTimerSound()
+                    self.remainingTime = -1
+                    self.lastUpdated = Date()
+                    self.scheduleAutoBreakIfNeeded()
+                } else {
+                    // Overtime - count negative
+                    self.remainingTime -= 1
+                    self.lastUpdated = Date()
+                }
+            }
+        }
+    }
+
+    /// Presets marked "block distractions" hand off to Raycast Focus, which does the actual
+    /// app and website blocking; everything else is a local countdown.
+    func start(preset: TimerPreset) {
+        if preset.blocksDistractions, RaycastFocusManager.shared.isAvailable {
+            let categories = preset.resolvedFocusCategoryIds.isEmpty
+                ? Defaults[.raycastFocusSelectedCategories]
+                : preset.resolvedFocusCategoryIds
+            RaycastFocusManager.shared.startSession(
+                goal: preset.name,
+                duration: preset.duration,
+                categoryIds: categories,
+                mode: Defaults[.raycastFocusMode]
+            )
+            return
+        }
+        startTimer(duration: preset.duration, name: preset.name, preset: preset)
+    }
+
+    /// Starts the configured break once a focus timer or Raycast Focus session has finished.
+    /// Breaks never chain into further breaks.
+    func scheduleAutoBreakIfNeeded(after delay: TimeInterval = 1.5, completedName: String? = nil) {
+        guard Defaults[.autoStartBreakAfterTimer] else { return }
+        guard !isAutoBreak, !Self.looksLikeBreak(completedName ?? timerName) else { return }
+
+        autoBreakWorkItem?.cancel()
+        let item = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.autoBreakWorkItem = nil
+            let minutes = max(1, Defaults[.autoBreakDurationMinutes])
+            self.startTimer(duration: TimeInterval(minutes * 60), name: String(localized: "Break"), isBreak: true)
+        }
+        autoBreakWorkItem = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)
+    }
+
+    private func cancelAutoBreak() {
+        autoBreakWorkItem?.cancel()
+        autoBreakWorkItem = nil
+    }
+
+    static func looksLikeBreak(_ name: String) -> Bool {
+        name.localizedCaseInsensitiveContains("break")
+            || name.localizedCaseInsensitiveContains(String(localized: "Break"))
     }
 
     private func scheduleSmoothClose() {
@@ -522,6 +663,9 @@ class TimerManager: ObservableObject {
     
     // MARK: - Formatted Time Strings
     func formattedRemainingTime() -> String {
+        if isOpenEnded {
+            return timeString(from: elapsedTime)
+        }
         if isOvertime && remainingTime < 0 {
             return "-" + timeString(from: abs(remainingTime))
         } else {

@@ -147,8 +147,8 @@ struct ContentView: View {
             }
         }
         
-        if coordinator.currentView == .timer {
-            return CGSize(width: baseSize.width, height: 250) // Extra height for timer presets
+        if coordinator.currentView == .timer || coordinator.currentView == .focus {
+            return CGSize(width: baseSize.width, height: 250) // Extra height for timer presets / focus form
         }
         
         return inlineLyricsAdjustedNotchSize(
@@ -948,7 +948,7 @@ struct ContentView: View {
                           else if coordinator.sneakPeek.type == .timer {
                               if !vm.hideOnClosed && activeSneakPeekStyle == .standard {
                                   HStack(alignment: .center) {
-                                      Image(systemName: "timer")
+                                      Image(systemName: timerManager.symbolName)
                                       GeometryReader { geo in
                                           MarqueeText(.constant(timerManager.timerName + " - " + timerManager.formattedRemainingTime()), textColor: timerManager.timerColor, minDuration: 1, frameWidth: geo.size.width)
                                       }
@@ -993,6 +993,8 @@ struct ContentView: View {
                                   NotchHomeView(albumArtNamespace: albumArtNamespace)
                               case .timer:
                                   NotchTimerView()
+                              case .focus:
+                                  NotchFocusView()
                           }
                       }
                       .id(coordinator.currentView)
@@ -1284,7 +1286,7 @@ struct ContentView: View {
 
                 switch secondary {
                 case .timer:
-                    Image(systemName: "timer")
+                    Image(systemName: timerManager.symbolName)
                         .font(.system(size: badgeSize * 0.55, weight: .semibold))
                         .foregroundStyle(timerAccentColor)
                 case .reminder(let entry):
@@ -1636,7 +1638,16 @@ struct ContentView: View {
                 triggerHapticIfAllowed()
             }
 
-            let shouldFocusTimerTab = enableTimerFeature && timerDisplayMode == .tab && timerManager.isTimerActive && !enableMinimalisticUI
+            // A running countdown opens straight onto its tab: Raycast Focus sessions live in
+            // the Focus tab, local timers in the Timer tab.
+            let activeTimerTab: NotchViews? = {
+                guard timerManager.isTimerActive, !enableMinimalisticUI else { return nil }
+                if timerManager.isRaycastFocusSession {
+                    return RaycastFocusManager.shared.isAvailable ? .focus : nil
+                }
+                return (enableTimerFeature && timerDisplayMode == .tab) ? .timer : nil
+            }()
+            let shouldFocusTimerTab = activeTimerTab != nil
 
             guard vm.notchState == .closed,
                 !isSneakPeekVisibleOnCurrentScreen,
@@ -1655,9 +1666,9 @@ struct ContentView: View {
                           !self.isSneakPeekVisibleOnCurrentScreen,
                           !self.coordinator.isHoverOpenSuppressed else { return }
 
-                    if shouldFocusTimerTab {
+                    if let activeTimerTab {
                         withAnimation(.smooth) {
-                            self.coordinator.currentView = .timer
+                            self.coordinator.currentView = activeTimerTab
                         }
                     }
                     self.openNotch()
@@ -2221,11 +2232,11 @@ private struct MusicTimerSupplementView: View {
     }
 
     private var showsRingProgress: Bool {
-        showsProgress && progressStyle == .ring
+        showsProgress && progressStyle == .ring && !timerManager.isOpenEnded
     }
 
     private var showsBarProgress: Bool {
-        showsProgress && progressStyle == .bar
+        showsProgress && progressStyle == .bar && !timerManager.isOpenEnded
     }
 
     private var countdownText: String {

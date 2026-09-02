@@ -252,7 +252,7 @@ final class SystemTimerBridge: ObservableObject {
             if clearTimer {
                 self.logDebug("Clearing external timer state via TimerManager")
                 DispatchQueue.main.async {
-                    TimerManager.shared.endExternalTimer(triggerSmoothClose: false)
+                    TimerManager.shared.endExternalTimer(owner: .systemClock, triggerSmoothClose: false)
                 }
             }
         }
@@ -567,9 +567,10 @@ final class SystemTimerBridge: ObservableObject {
 
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            if TimerManager.shared.isExternalTimerActive {
+            if TimerManager.shared.isExternalTimerActive(for: .systemClock) {
                 self.logDebug("Updating existing external timer (total: \(update.total))")
                 TimerManager.shared.updateExternalTimer(
+                    owner: .systemClock,
                     remaining: update.remaining,
                     totalDuration: update.total,
                     isPaused: update.paused,
@@ -578,6 +579,7 @@ final class SystemTimerBridge: ObservableObject {
             } else {
                 self.logInfo("Adopting system timer as external source (name: \(update.name))")
                 TimerManager.shared.adoptExternalTimer(
+                    owner: .systemClock,
                     name: update.name,
                     totalDuration: update.total,
                     remaining: update.remaining,
@@ -588,7 +590,7 @@ final class SystemTimerBridge: ObservableObject {
             if update.remaining <= 0 {
                 self.logDidCompleteActiveTimer = true
                 self.logInfo("System timer reported completion")
-                TimerManager.shared.completeExternalTimer()
+                TimerManager.shared.completeExternalTimer(owner: .systemClock)
             } else {
                 self.logDidCompleteActiveTimer = false
             }
@@ -597,11 +599,11 @@ final class SystemTimerBridge: ObservableObject {
 
     private func handleMissingMenuExtra() {
         guard logIdentifier == nil else { return }
-        guard TimerManager.shared.isExternalTimerActive else { return }
+        guard TimerManager.shared.isExternalTimerActive(for: .systemClock) else { return }
 
         logDebug("Timer menu extra missing; ending external timer")
         DispatchQueue.main.async {
-            TimerManager.shared.endExternalTimer(triggerSmoothClose: true)
+            TimerManager.shared.endExternalTimer(owner: .systemClock, triggerSmoothClose: true)
         }
     }
 
@@ -865,7 +867,7 @@ final class SystemTimerBridge: ObservableObject {
         guard triggerSmoothClose else { return }
 
         DispatchQueue.main.async {
-            guard TimerManager.shared.isExternalTimerActive else { return }
+            guard TimerManager.shared.isExternalTimerActive(for: .systemClock) else { return }
             if didComplete {
                 guard let completedSessionID = TimerManager.shared.completedSessionID else { return }
                 self.logDebug("Timer finished; scheduling delayed cleanup")
@@ -877,11 +879,11 @@ final class SystemTimerBridge: ObservableObject {
                     }
 
                     self.logDebug("Delayed cleanup firing; ending external timer")
-                    TimerManager.shared.endExternalTimer(triggerSmoothClose: false)
+                    TimerManager.shared.endExternalTimer(owner: .systemClock, triggerSmoothClose: false)
                 }
             } else {
                 self.logDebug("Ending external timer immediately")
-                TimerManager.shared.endExternalTimer(triggerSmoothClose: true)
+                TimerManager.shared.endExternalTimer(owner: .systemClock, triggerSmoothClose: true)
             }
         }
     }
@@ -947,11 +949,12 @@ final class SystemTimerBridge: ObservableObject {
             initialTotalDuration = metadata.duration
         }
 
-        if TimerManager.shared.isExternalTimerActive {
+        if TimerManager.shared.isExternalTimerActive(for: .systemClock) {
             let remaining = latestRemaining ?? metadata.duration
             DispatchQueue.main.async {
                 self.logDebug("Syncing metadata update with TimerManager (remaining: \(remaining))")
                 TimerManager.shared.updateExternalTimer(
+                    owner: .systemClock,
                     remaining: remaining,
                     totalDuration: metadata.duration,
                     isPaused: self.latestPaused,
