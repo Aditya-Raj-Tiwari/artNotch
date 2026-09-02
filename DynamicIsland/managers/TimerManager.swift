@@ -128,7 +128,7 @@ class TimerManager: ObservableObject {
     private var soundPlayer: AVAudioPlayer?
     private var smoothCloseWorkItem: DispatchWorkItem?
     private var lifecycle = TimerLifecycle()
-    private let logger = os.Logger(subsystem: "com.Ebullioscopic.Atoll", category: "TimerManager")
+    private let logger = os.Logger(subsystem: "dev.adityatiwari.artNotch", category: "TimerManager")
 
     /// Identifies the current timer run. Delayed cleanup must match this value
     /// before changing presentation state.

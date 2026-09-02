@@ -36,7 +36,7 @@ protocol SpotifyTokenStoring: Sendable {
 /// Keychain-backed storage for the OAuth token pair. The client ID and token
 /// expiration are not secrets and stay in Defaults.
 struct KeychainSpotifyTokenStore: SpotifyTokenStoring {
-    private static let service = "com.Ebullioscopic.Atoll.SpotifyLibrary"
+    private static let service = "dev.adityatiwari.artNotch.SpotifyLibrary"
 
     private func baseQuery(for account: SpotifyTokenAccount) -> [String: Any] {
         [

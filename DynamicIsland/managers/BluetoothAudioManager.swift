@@ -101,7 +101,11 @@ class BluetoothAudioManager: ObservableObject {
 
     private var hudBatteryWaitTasks: [UUID: Task<Void, Never>] = [:]
     private let hudBatteryWaitInterval: TimeInterval = 0.3
-    private let hudBatteryWaitTimeout: TimeInterval = 1.8
+    // On this hardware no in-process source (IORegistry, Bluetooth plist) carries
+    // the AirPods level; it only arrives from `system_profiler`/`pmset`, which
+    // take 2-4s after a connect. The old 1.8s window expired first, so the HUD
+    // showed with no battery every time.
+    private let hudBatteryWaitTimeout: TimeInterval = 6.0
     private var listeningModeClearTask: Task<Void, Never>?
     private var listeningModePresentationTask: Task<Void, Never>?
     private var lastListeningModeByAddress: [String: AirPodsListeningMode] = [:]
@@ -1261,6 +1265,10 @@ class BluetoothAudioManager: ObservableObject {
                 self.subprocessNamePercentages = names
                 self.publishBatteryStatuses()
                 self.applyConnectedDeviceBatteryLevels(triggerPmsetFallback: false)
+                // If the connect HUD is already on screen without a level, fill it in.
+                if let level = self.hudBatteryLevelCandidate() {
+                    self.updateActiveBluetoothHUDBattery(with: level)
+                }
             }
         }
     }

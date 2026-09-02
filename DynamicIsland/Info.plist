@@ -8,7 +8,7 @@
 		<true/>
 	</dict>
 	<key>NSAudioCaptureUsageDescription</key>
-	<string>Atoll needs audio capture permission to display the real-time music waveform visualizer.</string>
+	<string>artNotch needs audio capture permission to display the real-time music waveform visualizer.</string>
 	<key>UTImportedTypeDeclarations</key>
 	<array>
 		<dict/>

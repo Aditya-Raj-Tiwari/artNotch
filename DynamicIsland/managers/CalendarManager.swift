@@ -47,11 +47,15 @@ class CalendarManager: ObservableObject {
     private var lastEventsFetchDate: Date?
     private let reloadRefreshInterval: TimeInterval = 15
     private var eventStoreChangedObserver: NSObjectProtocol?
+    private var dayChangedObserver: NSObjectProtocol?
     private var pendingEventStoreRefreshTask: Task<Void, Never>?
     private var nextAllowedEventStoreRefresh: Date = .distantPast
     private var ignoreEventStoreChangesUntil: Date = .distantPast
-    private let eventStoreChangeThrottle: TimeInterval = 20
-    private let selfInducedChangeSuppression: TimeInterval = 6
+    // EventKit posts a burst of change notifications for a single edit; coalesce
+    // them into one one-day query. A single query is cheap, so keep the window
+    // short enough that an edit in Calendar.app shows up in the notch promptly.
+    private let eventStoreChangeThrottle: TimeInterval = 3
+    private let selfInducedChangeSuppression: TimeInterval = 1
     private let eventFetchLimiter = EventFetchLimiter()
     private var lastLockScreenEventsFetchDate: Date?
     private let lockScreenRefreshInterval: TimeInterval = 15
@@ -63,6 +67,7 @@ class CalendarManager: ObservableObject {
     private init() {
         currentWeekStartDate = CalendarManager.startOfDay(Date())
         setupEventStoreChangedObserver()
+        setupDayChangedObserver()
         startLockScreenRefreshLoop()
         Task {
             // Kick off authorization + the first events/reminders fetch at launch.
@@ -77,6 +82,9 @@ class CalendarManager: ObservableObject {
         if let observer = eventStoreChangedObserver {
             NotificationCenter.default.removeObserver(observer)
         }
+        if let observer = dayChangedObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
         pendingEventStoreRefreshTask?.cancel()
         lockScreenRefreshTask?.cancel()
     }
@@ -88,6 +96,18 @@ class CalendarManager: ObservableObject {
             queue: .main
         ) { [weak self] _ in
             self?.handleEventStoreChanged()
+        }
+    }
+
+    /// Rolls the displayed day over at midnight so an app left running overnight
+    /// shows today's events instead of yesterday's.
+    private func setupDayChangedObserver() {
+        dayChangedObserver = NotificationCenter.default.addObserver(
+            forName: .NSCalendarDayChanged,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { await self?.updateCurrentDate(Date()) }
         }
     }
 
@@ -122,7 +142,12 @@ class CalendarManager: ObservableObject {
     private func performEventStoreRefresh() async {
         pendingEventStoreRefreshTask = nil
         await reloadCalendarAndReminderLists()
-        await maybeRefreshEventsAfterReload()
+        // The store told us something changed, so always re-query. The
+        // non-forced path skipped the fetch whenever the notch had been opened
+        // in the previous 15s, silently dropping edits made in Calendar.app.
+        if hasCalendarAccess {
+            await updateEvents(force: true)
+        }
         await updateLockScreenEvents(force: true)
         nextAllowedEventStoreRefresh = Date().addingTimeInterval(eventStoreChangeThrottle)
         ignoreEventStoreChangesUntil = Date().addingTimeInterval(selfInducedChangeSuppression)
@@ -135,16 +160,6 @@ class CalendarManager: ObservableObject {
         reminderLists = allCalendars.filter { $0.isReminder }
         self.allCalendars = allCalendars
         updateSelectedCalendars()
-    }
-
-    @MainActor
-    private func maybeRefreshEventsAfterReload() async {
-        guard hasCalendarAccess else { return }
-        let now = Date()
-        if let lastFetch = lastEventsFetchDate, now.timeIntervalSince(lastFetch) < reloadRefreshInterval {
-            return
-        }
-        await updateEvents()
     }
 
     private func isAuthorized(_ status: EKAuthorizationStatus) -> Bool {

@@ -113,7 +113,7 @@ struct NotchTimerView: View {
                     .background(Color.white.opacity(0.05))
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             } else {
-                let computedHeight = CGFloat(timerPresets.count) * 60 + 4
+                let computedHeight = CGFloat(timerPresets.count) * 52 + 4
                 let listHeight = min(max(0, maxTabContentHeight - 16), computedHeight)
                 ZStack {
                     List {
@@ -339,6 +339,10 @@ struct NotchTimerView: View {
         .padding(12)
         .background(Color.white.opacity(0.04))
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+        )
     }
 
     private var inactiveTimerPlaceholder: some View {
@@ -454,10 +458,6 @@ struct NotchTimerView: View {
         timerManager.isPaused ? String(localized: "Resume") : String(localized: "Pause")
     }
 
-    private var startButtonColor: Color {
-        Color(red: 0.142, green: 0.633, blue: 0.265)
-    }
-
     private var isStartDisabled: Bool {
         customDurationInSeconds == 0
     }
@@ -469,47 +469,39 @@ struct NotchTimerView: View {
     private var buttonColumnWidth: CGFloat { 210 }
 
     private var startButton: some View {
+        // Primary action: solid white on black, matching the monochrome shell.
         Button(action: startCustomTimer) {
             Label(String(localized: "Start"), systemImage: "play.fill")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(Color.white)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Color.black)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
+                .padding(.vertical, 9)
                 .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(startButtonColor.opacity(isStartDisabled ? 0.5 : 1))
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(Color.white.opacity(isStartDisabled ? 0.35 : 0.92))
                 )
         }
         .buttonStyle(.plain)
         .frame(maxWidth: .infinity)
-        .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color.white.opacity(0.15), lineWidth: 1)
-        )
-        .opacity(isStartDisabled ? 0.7 : 1)
+        .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .disabled(isStartDisabled)
     }
 
     private var resetButton: some View {
         Button(action: resetCustomTimerInputs) {
             Label(String(localized: "Reset"), systemImage: "arrow.counterclockwise")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.9))
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.85))
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
+                .padding(.vertical, 9)
                 .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Color.white.opacity(0.16))
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(Color.white.opacity(0.10))
                 )
         }
         .buttonStyle(.plain)
         .frame(maxWidth: .infinity)
-        .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color.white.opacity(0.08), lineWidth: 1)
-        )
+        .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
     private var customDurationInSeconds: TimeInterval {
@@ -627,18 +619,21 @@ private struct DurationInputRow: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 8) {
-            DurationField(label: String(localized: "Hours"), value: $hours, range: 0...23, width: fieldWidth)
+            // Short unit labels: the full words were truncated ("Secon…") at the
+            // 64pt field width used when the preset column is showing.
+            DurationField(label: String(localized: "hr"), value: $hours, range: 0...23, width: fieldWidth)
             colon
-            DurationField(label: String(localized: "Minutes"), value: $minutes, range: 0...59, width: fieldWidth)
+            DurationField(label: String(localized: "min"), value: $minutes, range: 0...59, width: fieldWidth)
             colon
-            DurationField(label: String(localized: "Seconds"), value: $seconds, range: 0...59, width: fieldWidth)
+            DurationField(label: String(localized: "sec"), value: $seconds, range: 0...59, width: fieldWidth)
         }
     }
 
     private var colon: some View {
         Text(":")
-            .font(.system(size: 26, weight: .black, design: .monospaced))
-            .foregroundStyle(Color.white.opacity(0.65))
+            .font(.system(size: 22, weight: .bold, design: .monospaced))
+            .foregroundStyle(Color.white.opacity(0.4))
+            .padding(.bottom, 18)
     }
 }
 
@@ -663,18 +658,20 @@ private struct DurationField: View {
     var body: some View {
         VStack(spacing: 6) {
             TextField("00", text: binding)
-                .font(.system(size: 28, weight: .semibold, design: .monospaced))
+                .font(.system(size: 26, weight: .medium, design: .rounded).monospacedDigit())
                 .multilineTextAlignment(.center)
                 .textFieldStyle(.plain)
                 .foregroundColor(.white)
                 .tint(.white)
-                .frame(width: width, height: 46)
-                .background(Color.white.opacity(0.08))
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .frame(width: width, height: 44)
+                .background(Color.white.opacity(0.07))
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 
             Text(label)
-                .font(.caption)
-                .foregroundStyle(Color.white.opacity(0.65))
+                .font(.system(size: 10, weight: .medium))
+                .textCase(.uppercase)
+                .tracking(0.6)
+                .foregroundStyle(Color.white.opacity(0.45))
         }
     }
 
@@ -695,44 +692,46 @@ private struct TimerPresetCard: View {
     let isActive: Bool
     let action: () -> Void
 
+    @State private var isHovering = false
+
     var body: some View {
+        // Monochrome row: the preset colour only tints the small leading dot so
+        // presets stay distinguishable without turning the tab into a palette.
         Button(action: action) {
             HStack(spacing: 12) {
                 Circle()
-                    .fill(preset.color.gradient)
-                    .frame(width: 30, height: 30)
-                    .overlay(
-                        Circle()
-                            .stroke(Color.white.opacity(0.3), lineWidth: 1)
-                    )
+                    .fill(preset.color.opacity(isHovering || isActive ? 1 : 0.8))
+                    .frame(width: 8, height: 8)
+                    .padding(.leading, 2)
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 1) {
                     Text(preset.name)
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.92))
                         .lineLimit(1)
                     Text(preset.formattedDuration)
-                        .font(.caption.monospaced())
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 11, weight: .medium).monospacedDigit())
+                        .foregroundStyle(.white.opacity(0.45))
                 }
-                .foregroundStyle(preset.color)
 
-                Spacer()
+                Spacer(minLength: 8)
 
                 Image(systemName: isActive ? "checkmark" : "play.fill")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(isActive ? preset.color : Color.secondary)
-                    .padding(6)
-                    .background(isActive ? preset.color.opacity(0.2) : Color.white.opacity(0.08))
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(isActive ? Color.black : Color.white.opacity(0.85))
+                    .frame(width: 26, height: 26)
+                    .background(isActive ? Color.white.opacity(0.9) : Color.white.opacity(isHovering ? 0.16 : 0.10))
                     .clipShape(Circle())
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 6)
+            .padding(.vertical, 8)
             .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(isActive ? preset.color.opacity(0.12) : Color.white.opacity(0.04))
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.white.opacity(isActive ? 0.10 : (isHovering ? 0.07 : 0.04)))
             )
         }
         .buttonStyle(.plain)
+        .onHover { hovering in isHovering = hovering }
     }
 }
 

@@ -11,8 +11,8 @@
 import Foundation
 
 enum AtollDistributedNotifications {
-    static let didBecomeActive = Notification.Name("com.ebullioscopic.Atoll.lifecycle.didBecomeActive")
-    static let didBecomeIdle = Notification.Name("com.ebullioscopic.Atoll.lifecycle.didBecomeIdle")
+    static let didBecomeActive = Notification.Name("dev.adityatiwari.artNotch.lifecycle.didBecomeActive")
+    static let didBecomeIdle = Notification.Name("dev.adityatiwari.artNotch.lifecycle.didBecomeIdle")
 
     enum UserInfoKey {
         static let sourcePID = "sourcePID"
